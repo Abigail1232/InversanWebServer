@@ -45,20 +45,6 @@ services:
     networks:
       - inversan_net
 
-  frontend:
-  build:
-    context: ./Web/FrontEnd/
-    dockerfile: ./Dockerfile
-    args:
-      VITE_API_URL: "http://192.168.1.43:3003"
-  container_name: inversan_frontend
-  ports:
-    - "5000:5000"
-  depends_on:
-    - backend
-  networks:
-    - inversan_net
-    
   backend:
     build:
       context: ./Web/Backend/
@@ -66,7 +52,7 @@ services:
     container_name: inversan_backend
     restart: unless-stopped
     ports:
-      - "3003:3003"
+      - "3003:3000"
     env_file:
       - .env
     depends_on:
@@ -74,9 +60,24 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-
     networks:
       - inversan_net
+
+  frontend:
+    build:
+      context: ./Web/FrontEnd/
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: "http://192.168.1.43:3003"
+    container_name: inversan_frontend
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    depends_on:
+      - backend
+    networks:
+      - inversan_net
+
 volumes:
   db_data:
   redis_data:
