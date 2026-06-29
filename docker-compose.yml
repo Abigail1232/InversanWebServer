@@ -46,18 +46,19 @@ services:
       - inversan_net
 
   frontend:
-    build:
-      context: ./Web/FrontEnd/
-      dockerfile: ./Dockerfile
-      args:
-        - VITE_API_URL=http://192.168.1.43:3003
-    container_name: inversan_frontend
-    ports:
-      - "5000:5000"
-    depends_on:
-      - backend
-    networks:
-      - inversan_net
+  build:
+    context: ./Web/FrontEnd/
+    dockerfile: ./Dockerfile
+    args:
+      VITE_API_URL: "http://192.168.1.43:3003"
+  container_name: inversan_frontend
+  ports:
+    - "5000:5000"
+  depends_on:
+    - backend
+  networks:
+    - inversan_net
+    
   backend:
     build:
       context: ./Web/Backend/
