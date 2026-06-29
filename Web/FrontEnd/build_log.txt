@@ -1,0 +1,20 @@
+
+> frontend@0.0.0 build
+> tsc -b && vite build
+
+src/App.tsx(6,1): error TS6133: 'Logo' is declared but its value is never read.
+src/App.tsx(7,1): error TS6133: 'Spin' is declared but its value is never read.
+src/components/FilterBar.tsx(128,3): error TS6133: 'fullWidthFilters' is declared but its value is never read.
+src/pages/Client/checkout/OrderConfirmationStep.tsx(375,23): error TS2561: Object literal may only specify known properties, but 'textAlignment' does not exist in type 'Properties<string | number, string & {}>'. Did you mean to write 'textAlign'?
+src/pages/Client/productDetailPage.tsx(216,36): error TS2322: Type 'number | undefined' is not assignable to type 'number'.
+  Type 'undefined' is not assignable to type 'number'.
+src/pages/Client/productDetailPage.tsx(221,27): error TS18048: 'product.originalPrice' is possibly 'undefined'.
+src/pages/admin/AdminDashboard.tsx(450,9): error TS6133: 'deliveryAssignedColumns' is declared but its value is never read.
+src/pages/report/ReportVisitas.tsx(187,14): error TS2339: Property 'tiempo_atencion' does not exist on type 'TopProductoData'.
+src/pages/report/ReportVisitas.tsx(468,92): error TS2339: Property 'tiempo_atencion' does not exist on type 'TopProductoData'.
+src/pages/report/ReporteVentas.tsx(4,3): error TS6133: 'Eye' is declared but its value is never read.
+src/pages/report/ReporteVentas.tsx(8,3): error TS6133: 'CreditCard' is declared but its value is never read.
+src/pages/report/ReporteVentas.tsx(18,8): error TS6133: 'FacturaDetalle' is declared but its value is never read.
+src/pages/report/ReporteVentas.tsx(155,23): error TS2322: Type 'number[]' is not assignable to type 'Color | undefined'.
+  Type 'number[]' is not assignable to type '[number, number, number]'.
+    Target requires 3 element(s) but source may have fewer.

@@ -1,0 +1,103 @@
+--- src/components/report/ReportTables.tsx
++++ src/components/report/ReportTables.tsx
+@@ -10,13 +10,14 @@
+ // --- CONFIGURACIÓN CENTRALIZADA ---
+ export const SPEC_CONFIGS = [
+-  { key: 'rin', label: 'Rin / Pulgada' },
+-  { key: 'ancho_rin', label: 'Ancho' },
+-  { key: 'alto_rin', label: 'Perfil (Alto)' },
+-  { key: 'version', label: 'Versión' },
+-  { key: 'lonas', label: 'Lonas' }
++  { key: 'rin', label: 'Rin / Pulgada', type: 'select', apiField: 'rines' },
++  { key: 'ancho_rin', label: 'Ancho', type: 'select', apiField: 'anchos_rin' },
++  { key: 'alto_rin', label: 'Perfil (Alto)', type: 'select', apiField: 'altos_rin' },
++  { key: 'version', label: 'Versión', type: 'text' },
++  { key: 'lonas', label: 'Lonas', type: 'text' }
+ ];
+ 
+ // --- ESTILOS COMPARTIDOS (UI Consistency) ---
+ const HEADER_CLASS = "py-3 px-6 bg-[#003E7B] text-white flex flex-col xl:flex-row xl:items-center justify-between gap-3";
+-const INPUT_CLASS = "h-10 w-full rounded-xl bg-white border border-[#D7E3F0] hover:border-[#027EB1] focus:border-[#027EB1] focus:ring-1 focus:ring-[#027EB1] focus:outline-none px-3 text-sm text-slate-700 placeholder:text-slate-400 transition-all duration-200";
++const INPUT_CLASS = "h-10 w-full rounded-xl bg-white border border-[#D7E3F0] hover:border-[#027EB1] focus:border-[#027EB1] focus:ring-1 focus:ring-[#027EB1] focus:outline-none px-3 text-sm text-slate-700 placeholder:text-slate-400 transition-all duration-200 appearance-none";
+ const LABEL_CLASS = "block mb-1.5 text-xs font-bold text-gray-700 tracking-wide";
+ 
+@@ -25,12 +26,30 @@
+   updateFilter,
+   clearFilters,
+-  activeCount
++  activeCount,
++  mainFilter
+ }: {
+   configs: typeof SPEC_CONFIGS;
+   filters: Record<string, any>;
+   updateFilter: (k: string, v: any) => void;
+   clearFilters: () => void;
+   activeCount: number;
++  mainFilter?: {
++    key: string;
++    label: string;
++    options: { label: string; value: number }[];
++  };
+ }) {
+   const hasActive = activeCount > 0;
++  const [options, setOptions] = useState<any>({});
++
++  useEffect(() => {
++    import('../../api/products/rines').then(({ getFiltrosLlantas }) => {
++      getFiltrosLlantas().then((res) => {
++        if (res.success && res.filtros) setOptions(res.filtros);
++      }).catch(err => console.error(err));
++    });
++  }, []);
+ 
+   return (
+@@ -48,27 +67,50 @@
+         )}
+       </div>
+ 
+       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
++        {mainFilter && (
++          <div className="col-span-1 border-r border-[#D7E3F0] pr-4 mr-1">
++            <label className="block mb-1.5 text-xs font-black text-[#003E7B] uppercase tracking-wider">{mainFilter.label}</label>
++            <select
++              value={filters[mainFilter.key] || ''}
++              onChange={(e) => updateFilter(mainFilter.key, Number(e.target.value))}
++              className={`${INPUT_CLASS} font-bold text-[#003E7B] bg-[#EAF7FD] border-[#027EB1]`}
++            >
++              {mainFilter.options.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
++            </select>
++          </div>
++        )}
+         {configs.map(conf => (
+           <div key={conf.key}>
+             <label className={LABEL_CLASS}>{conf.label}</label>
+-            <input
+-              type="text"
+-              placeholder="Todos..."
+-              value={filters[conf.key] || ''}
+-              onChange={(e) => updateFilter(conf.key, e.target.value)}
+-              className={INPUT_CLASS}
+-            />
++            {conf.type === 'select' ? (
++              <select
++                value={filters[conf.key] || ''}
++                onChange={(e) => updateFilter(conf.key, e.target.value ? Number(e.target.value) : undefined)}
++                className={INPUT_CLASS}
++              >
++                <option value="">Todos...</option>
++                {options[conf.apiField!]?.map((val: number) => (
++                  <option key={val} value={val}>{val}</option>
++                ))}
++              </select>
++            ) : (
++              <input
++                type="text"
++                placeholder="Todos..."
++                value={filters[conf.key] || ''}
++                onChange={(e) => updateFilter(conf.key, e.target.value)}
++                className={INPUT_CLASS}
++              />
++            )}
+           </div>
+         ))}
+       </div>

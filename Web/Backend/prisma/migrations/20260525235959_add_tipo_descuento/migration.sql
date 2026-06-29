@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE `Producto_Promocion` ADD COLUMN `tipo_descuento` VARCHAR(20) NOT NULL DEFAULT 'porcentaje';

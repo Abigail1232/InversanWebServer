@@ -1,0 +1,8 @@
+# No mandar secretos al build context
+.env
+example.env
+
+# Basura común
+.git
+.gitignore
+node_modules

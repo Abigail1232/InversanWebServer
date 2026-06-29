@@ -1,0 +1,15 @@
+# No mandar secretos al build context
+.env
+.env.*
+!.env.example
+
+# Basura común
+.git
+.gitignore
+node_modules
+vendor
+__pycache__
+*.log
+.DS_Store
+
+docker-compose*.yml

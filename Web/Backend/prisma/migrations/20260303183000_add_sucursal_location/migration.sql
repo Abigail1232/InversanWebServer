@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE `Sucursal` ADD COLUMN `direccion` VARCHAR(191) NULL,
+    ADD COLUMN `lat` DOUBLE NULL,
+    ADD COLUMN `lng` DOUBLE NULL;

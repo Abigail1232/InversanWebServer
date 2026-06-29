@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE `Producto_Promocion` ADD COLUMN `precio_promocion` DECIMAL(10, 2) NULL;

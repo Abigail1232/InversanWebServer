@@ -1,0 +1,2 @@
+ALTER TABLE `Bodega`
+ADD COLUMN `activo` BOOLEAN NOT NULL DEFAULT true;

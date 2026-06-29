@@ -1,0 +1,8 @@
+
+> frontend@0.0.0 build
+> tsc -b && vite build
+
+src/pages/admin/AdminProducts.tsx(307,19): error TS2322: Type '{ children: Element; search: { value: string; onChange: (v: string) => void; placeholder: string; }; filters: { placeholder: string; value: string; onChange: (v: string | number | boolean | undefined) => void; options: { ...; }[]; }[]; onClear: () => void; fullWidthFilters: boolean; }' is not assignable to type 'IntrinsicAttributes & FilterBarProps'.
+  Property 'fullWidthFilters' does not exist on type 'IntrinsicAttributes & FilterBarProps'.
+src/pages/report/Reportsuggestions.tsx(229,17): error TS2322: Type '{ children: Element; fullWidthFilters: true; search: { value: string; onChange: (value: string) => void; placeholder: string; }; filters: { placeholder: string; value: string | undefined; onChange: (value: string | ... 2 more ... | undefined) => void; options: { ...; }[]; }[]; fechaInicio: { ...; }; fechaFin: { ...;...' is not assignable to type 'IntrinsicAttributes & FilterBarProps'.
+  Property 'fullWidthFilters' does not exist on type 'IntrinsicAttributes & FilterBarProps'.

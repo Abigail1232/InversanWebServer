@@ -1,0 +1,637 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ENUMS
+enum accion_ingreso {
+  incremento
+  decremento
+}
+
+enum tipo_entrega_enum {
+  retiro_en_el_local
+  a_domicilio
+}
+
+enum tipo_pago_pedido_enum {
+  efectivo
+  transferencia_bancaria
+  pos
+  compra_click
+  pay_pal
+}
+
+enum estado_pedido_enum {
+  pendiente
+  en_proceso
+  entregado
+  cancelado
+  pago_pendiente
+  devolucion_aplicada
+  devolucion_pendiente
+}
+
+enum estado_asignacion_enum {
+  asignado
+  no_asignado
+  rechazado
+}
+
+enum tipo_pago_factura_enum {
+  efectivo
+  transferencia_bancaria
+  pos
+  compra_click
+  mi_pos
+  pay_pal
+}
+
+enum estado_factura_enum {
+  emitida
+  anulada
+}
+
+enum tipo_cliente_enum {
+  registrado
+  invitado
+}
+
+enum tipo_devolucion_enum {
+  parcial
+  total
+}
+
+enum estado_devolucion_enum {
+  solicitada
+  aprobada
+  rechazada
+  procesada
+}
+
+model Usuario {
+  id_usuario       Int    @id @default(autoincrement())
+  usuario          String @unique @db.VarChar(30)
+  correo           String @unique
+  clave            String @db.VarChar(72)
+  primer_nombre    String @db.VarChar(20)
+  segundo_nombre   String? @db.VarChar(20)
+  primer_apellido  String @db.VarChar(20)
+  segundo_apellido String? @db.VarChar(20)
+  telefono         String? @db.VarChar(16)
+  activo           Boolean @default(true)
+  id_rol           Int
+
+  rol Rol @relation(fields: [id_rol], references: [id_rol])
+
+  // Relaciones
+  sucursal                       Sucursal[]
+  pedido_asignacion_repartidor   Pedido_Asignacion[] @relation("PedidoAsignacionRepartidor")
+  pedido_asignacion_asignado_por Pedido_Asignacion[] @relation("PedidoAsignacionAsignadoPor")
+  producto_ingreso               Producto_Ingreso[]
+  sugerencia                     sugerencia[]
+  factura_usuario_emisor         Factura[]           @relation("FacturaUsuarioEmisor")
+  notificacion                   Notificacion[]
+  usuario_notificacion           Usuario_Notificacion[]
+  pedido_usuario                 Pedido_Usuario[]
+  empleado_sucursal              Empleado_Sucursal[]
+
+  devolucion_usuario_registra    Devolucion[]        @relation("DevolucionUsuarioRegistra")
+  devolucion_usuario_aprueba     Devolucion[]        @relation("DevolucionUsuarioAprueba")
+  producto_visitas               Producto_Visitas[]
+  busqueda_interna               Busqueda_Interna[]
+  carrito                        Carrito[]
+}
+
+model Rol {
+  id_rol      Int    @id @default(autoincrement())
+  nombre      String @db.VarChar(50)
+  descripcion String @db.VarChar(255)
+  activo      Boolean @default(true)
+
+  usuario        Usuario[]
+  rol_privilegio Rol_Privilegio[]
+}
+
+model Privilegio {
+  id_privilegio Int    @id @default(autoincrement())
+  nombre        String @db.VarChar(50)
+  descripcion   String @db.VarChar(255)
+
+  rol_privilegio Rol_Privilegio[]
+}
+
+model Rol_Privilegio {
+  id_rol        Int
+  id_privilegio Int
+
+  rol        Rol        @relation(fields: [id_rol], references: [id_rol])
+  privilegio Privilegio @relation(fields: [id_privilegio], references: [id_privilegio])
+
+  @@id([id_rol, id_privilegio])
+}
+model Sucursal {
+  id_sucursal  Int    @id @default(autoincrement())
+  nombre       String @db.VarChar(50)
+  RTN          String
+  activo       Boolean
+  id_municipio Int
+  id_usuario   Int?
+  direccion    String         // location
+  lat          Float          // lat (tipo)
+  lng          Float          // lng (tipo)
+
+  municipio Municipio @relation(fields: [id_municipio], references: [id_municipio])
+  usuario   Usuario?  @relation(fields: [id_usuario], references: [id_usuario])
+
+  bodega  Bodega[]
+  pedido  Pedido[]
+  empleado_sucursal Empleado_Sucursal[]
+  producto_visitas  Producto_Visitas[]
+  carrito           Carrito[]
+}
+
+model Departamento {
+  id_departamento     Int    @id @default(autoincrement())
+  nombre_departamento String @db.VarChar(20)
+
+  municipio Municipio[]
+}
+
+model Municipio {
+  id_municipio    Int    @id @default(autoincrement())
+  nombre          String @db.VarChar(25)
+  id_departamento Int
+
+  departamento Departamento @relation(fields: [id_departamento], references: [id_departamento])
+
+  sucursal                 Sucursal[]
+  pedido_municipio_entrega Pedido[] @relation("PedidoMunicipioEntrega")
+}
+
+model Empleado_Sucursal {
+  id_empleado_sucursal Int      @id @default(autoincrement())
+  id_usuario           Int
+  id_sucursal          Int
+
+  usuario   Usuario   @relation(fields: [id_usuario], references: [id_usuario])
+  sucursal  Sucursal  @relation(fields: [id_sucursal], references: [id_sucursal])
+
+  @@unique([id_usuario, id_sucursal]) // evita duplicados
+}
+
+model Visita_Usuario {
+  id_visita Int      @id @default(autoincrement())
+  fecha     DateTime @db.Timestamp(0)
+}
+
+model Producto {
+  id_producto      Int      @id @default(autoincrement())
+  nombre           String   @db.VarChar(50)
+  lonas            Decimal  @db.Decimal(6,2)
+  rin              Decimal  @db.Decimal(6,2)
+  ancho_rin        Decimal  @db.Decimal(6,2)
+  alto_rin         Decimal  @db.Decimal(6,2)
+  version          String   @db.VarChar(50)
+  profundidad      Decimal
+  indice_de_carga  Float
+  presion_maxima   Int
+  indice_velocidad Int
+  estado  Boolean?  @default(true)
+  imagen_3d        String @db.VarChar(255)
+
+  precio_detalle Decimal @db.Decimal(10, 2)
+  precio_mayoreo Decimal @db.Decimal(10, 2)
+  precio_coste   Decimal @db.Decimal(10, 2)
+
+  descripcion  String @db.VarChar(255)
+  id_categoria Int
+  id_marca Int
+  id_diseno Int
+
+  marca     Marca     @relation(fields: [id_marca], references: [id_marca])
+  categoria Categoria @relation(fields: [id_categoria], references: [id_categoria])
+  diseno Diseno @relation(fields: [id_diseno], references: [id_diseno])
+
+  producto_imagen          Producto_Imagen[]
+  modelo_producto          Modelo_Producto[]
+  pedido_detalle           Pedido_Detalle[]
+  producto_ingreso_detalle Producto_Ingreso_Detalle[]
+  stock_bodega             Stock_Bodega[]
+  factura_detalle          Factura_Detalle[]
+  producto_promocion       Producto_Promocion[]
+  producto_visitas         Producto_Visitas[]
+  carrito_detalle          Carrito_Detalle[]
+
+  @@index([id_categoria])
+  @@index([id_marca])
+  @@index([id_diseno])
+  @@index([estado])
+}
+
+model Producto_Visitas {
+  id_visita         Int      @id @default(autoincrement())
+  id_producto       Int
+  id_usuario        Int?
+  id_sesion         String?  @db.VarChar(255)
+  id_sucursal       Int?
+  duracion_visita   Int
+  fecha             DateTime @default(now())
+  es_invitado       Boolean  @default(true)
+  es_retorno        Boolean  @default(false)
+
+  producto    Producto    @relation(fields: [id_producto], references: [id_producto])
+  sucursal    Sucursal?   @relation(fields: [id_sucursal], references: [id_sucursal])
+  usuario     Usuario?    @relation(fields: [id_usuario], references: [id_usuario])
+
+  @@index([id_producto])
+  @@index([fecha])
+  @@index([id_sesion])
+}
+
+model Busqueda_Interna {
+  id_busqueda     Int      @id @default(autoincrement())
+  termino         String   @db.VarChar(255)
+  id_usuario      Int?
+  id_sesion       String?  @db.VarChar(255)
+  tuvo_resultado  Boolean
+  fecha           DateTime @default(now())
+
+  usuario         Usuario? @relation(fields: [id_usuario], references: [id_usuario])
+
+  @@index([fecha])
+  @@index([termino])
+}
+
+model Modelo_Producto {
+  id_modelo_producto Int @id @default(autoincrement())
+  id_modelo Int
+  id_producto Int
+  id_version Int?
+
+  modelo Modelo @relation(fields: [id_modelo], references: [id_modelo])
+  producto Producto @relation(fields: [id_producto], references: [id_producto])
+  version Version? @relation(fields: [id_version], references: [id_version])
+
+  @@unique([id_modelo, id_producto, id_version])
+}
+
+model Modelo {
+  id_modelo   Int      @id @default(autoincrement())
+  marca String @db.VarChar(30)
+  nombre      String   @db.VarChar(50)
+  anio        DateTime @db.Date
+  activo     Boolean @default(true)
+  
+  @@unique([nombre, anio])
+  modelo_producto Modelo_Producto[]
+  versiones Version[]
+}
+
+model Version {
+  id_version  Int       @id @default(autoincrement())
+  nombre      String    @db.VarChar(50)
+  id_modelo   Int
+  activo      Boolean   @default(true)
+
+  modelo      Modelo    @relation(fields: [id_modelo], references: [id_modelo])
+  modelo_producto Modelo_Producto[]
+
+  @@map("versiones")
+}
+
+
+model Producto_Imagen {
+  id_imagen   Int    @id @default(autoincrement())
+  imagen_url  String @db.VarChar(255)
+  orden       Int
+  id_producto Int
+
+  producto Producto @relation(fields: [id_producto], references: [id_producto])
+}
+
+model Marca {
+  id_marca   Int    @id @default(autoincrement())
+  nombre     String @db.VarChar(50)
+  logo_url   String @db.VarChar(255)
+  banner_url String @db.VarChar(255)
+  activo     Boolean @default(true)
+
+  producto Producto[]
+  diseno Diseno[]
+}
+
+model Diseno {
+  id_diseno Int @id @default(autoincrement())
+  id_marca Int 
+  nombre String @db.VarChar(100) 
+  descripcion   String @db.VarChar(255)
+  fecha_creacion DateTime @default(now())
+  fecha_actualizacion DateTime @updatedAt
+  imagen_url   String @db.VarChar(255)
+  activo Boolean @default(true)
+
+  marca     Marca     @relation(fields: [id_marca], references: [id_marca])
+  producto Producto[]
+}
+
+model Categoria {
+  id_categoria Int    @id @default(autoincrement())
+  nombre       String @db.VarChar(50)
+  imagen_url   String @db.VarChar(255)
+  activo       Boolean
+
+  producto Producto[]
+}
+
+model Pedido {
+  id_pedido            Int                   @id @default(autoincrement())
+  numero_pedido        String                @db.VarChar(50)
+  descuento            Decimal               @db.Decimal(10, 2)
+  subtotal             Decimal               @db.Decimal(10, 2)
+  costo_envio          Decimal               @db.Decimal(10, 2)
+  total                Decimal               @db.Decimal(10, 2)
+  IVA                  Decimal               @db.Decimal(10, 2)
+  tipo_de_entrega      tipo_entrega_enum
+  tipo_de_pago         tipo_pago_pedido_enum
+  estado               estado_pedido_enum
+  fecha                DateTime              @db.Timestamp(0)
+  id_sucursal          Int
+  id_municipio_entrega Int
+  direccion            String                @db.VarChar(255)
+  comprobante_url      String?               @db.VarChar(255)
+
+  sucursal          Sucursal  @relation(fields: [id_sucursal], references: [id_sucursal])
+  municipio_entrega Municipio @relation("PedidoMunicipioEntrega", fields: [id_municipio_entrega], references: [id_municipio])
+
+  pedido_detalle    Pedido_Detalle[]
+  pedido_asignacion Pedido_Asignacion[]
+  factura           Factura?
+  pedido_usuario    Pedido_Usuario[]
+
+  @@index([id_sucursal])
+  @@index([estado])
+  @@index([fecha])
+}
+
+model Pedido_Detalle {
+  id_pedido_detalle Int     @id @default(autoincrement())
+  id_pedido         Int
+  id_producto       Int
+  cantidad          Int
+  precio_unitario   Decimal @db.Decimal(10, 2)
+  subtotal          Decimal @db.Decimal(10, 2)
+  total             Decimal @db.Decimal(10, 2)
+
+  pedido   Pedido   @relation(fields: [id_pedido], references: [id_pedido])
+  producto Producto @relation(fields: [id_producto], references: [id_producto])
+}
+
+model Pedido_Asignacion {
+  id_pedido_asignacion Int                  @id @default(autoincrement())
+  observacion          String               @db.VarChar(255)
+  fecha_asignacion     DateTime             @db.Timestamp(0)
+  fecha_estimada_entrega DateTime?          @db.Timestamp(0)
+  id_pedido            Int
+  id_repartidor        Int?
+  asignado_por         Int?
+  estado_asignacion    estado_asignacion_enum
+  activo               Boolean
+
+  pedido            Pedido   @relation(fields: [id_pedido], references: [id_pedido])
+  repartidor        Usuario? @relation("PedidoAsignacionRepartidor", fields: [id_repartidor], references: [id_usuario])
+  usuario_asignador Usuario? @relation("PedidoAsignacionAsignadoPor", fields: [asignado_por], references: [id_usuario])
+}
+
+model Promocion {
+  id_promocion       Int      @id @default(autoincrement())
+  titulo             String   @db.VarChar(50)
+  descripcion        String   @db.VarChar(255)
+  banner_url         String   @db.VarChar(255)
+  fecha_inicio       DateTime @db.Timestamp(0)
+  fecha_finalizacion DateTime @db.Timestamp(0)
+  mostrar_precio_porcentaje Boolean  @default(false)
+  mostrar_precio_tachado    Boolean  @default(true)
+
+  producto_promocion Producto_Promocion[]
+}
+
+model Producto_Ingreso {
+  id_ingreso    Int      @id @default(autoincrement())
+  fecha         DateTime @db.Timestamp(0)
+  proveedor     String   @db.VarChar(50)
+  id_usuario    Int
+  id_bodega     Int
+  observaciones String?  @db.VarChar(255)
+
+  usuario Usuario @relation(fields: [id_usuario], references: [id_usuario])
+  bodega  Bodega  @relation(fields: [id_bodega], references: [id_bodega])
+
+  producto_ingreso_detalle Producto_Ingreso_Detalle[]
+}
+
+model Producto_Ingreso_Detalle {
+  id_ingreso_detalle Int         @id @default(autoincrement())
+  id_ingreso         Int
+  id_producto        Int
+  cantidad           Int
+  total              Decimal     @db.Decimal(10, 2)
+  accion             accion_ingreso
+
+  producto_ingreso Producto_Ingreso @relation(fields: [id_ingreso], references: [id_ingreso])
+  producto         Producto         @relation(fields: [id_producto], references: [id_producto])
+}
+
+model Bodega {
+  id_bodega   Int    @id @default(autoincrement())
+  nombre      String @db.VarChar(50)
+  activo      Boolean @default(true)
+  id_sucursal Int
+
+  sucursal Sucursal @relation(fields: [id_sucursal], references: [id_sucursal])
+
+  producto_ingreso Producto_Ingreso[]
+  stock_bodega     Stock_Bodega[]
+}
+
+model Stock_Bodega {
+  id_stock_bodega     Int      @id @default(autoincrement())
+  existencias         Int
+  id_bodega           Int
+  id_producto         Int
+  fecha_actualizacion DateTime @db.Timestamp(0)
+
+  bodega   Bodega   @relation(fields: [id_bodega], references: [id_bodega])
+  producto Producto @relation(fields: [id_producto], references: [id_producto])
+
+}
+
+
+model sugerencia {
+  id_sugerencia Int      @id @default(autoincrement())
+  id_usuario    Int
+  tipo          String   @db.VarChar(50)
+  titulo        String   @db.VarChar(50)
+  descripcion   String   @db.VarChar(255)
+  fecha         DateTime @db.Timestamp(0)
+
+  usuario Usuario @relation(fields: [id_usuario], references: [id_usuario])
+}
+
+model Factura {
+  id_factura         Int                  @id @default(autoincrement())
+  numero_factura     String               @unique
+  fecha_emision      DateTime             @db.Timestamp(0)
+  id_pedido          Int                  @unique
+  id_pedido_usuario  Int
+  id_usuario_emisor  Int
+  subtotal           Decimal              @db.Decimal(10, 2)
+  descuento          Decimal              @db.Decimal(10, 2)
+  iva                Decimal              @db.Decimal(10, 2)
+  costo_envio        Decimal              @db.Decimal(10, 2)
+  total              Decimal              @db.Decimal(10, 2)
+  tipo_de_pago       tipo_pago_factura_enum
+  estado             estado_factura_enum
+  observacion        String               @db.VarChar(255)
+
+  pedido          Pedido         @relation(fields: [id_pedido], references: [id_pedido])
+  pedido_usuario  Pedido_Usuario @relation(fields: [id_pedido_usuario], references: [id_pedido_usuario])
+  usuario_emisor  Usuario        @relation("FacturaUsuarioEmisor", fields: [id_usuario_emisor], references: [id_usuario])
+
+  factura_detalle Factura_Detalle[]
+  devolucion      Devolucion[]
+}
+
+model Factura_Detalle {
+  id_factura_detalle Int     @id @default(autoincrement())
+  id_factura         Int
+  id_producto        Int
+  cantidad           Int
+  precio_unitario    Decimal @db.Decimal(10, 2)
+  descuento          Decimal @db.Decimal(10, 2)
+  subtotal           Decimal @db.Decimal(10, 2)
+  total              Decimal @db.Decimal(10, 2)
+
+  factura   Factura   @relation(fields: [id_factura], references: [id_factura])
+  producto  Producto  @relation(fields: [id_producto], references: [id_producto])
+
+  devolucion_detalle Devolucion_Detalle[]
+}
+
+model Producto_Promocion {
+  id_producto       Int
+  id_promocion      Int
+  descuento         Decimal @db.Decimal(10, 2)
+  tipo_descuento    String  @default("porcentaje") @db.VarChar(20)
+  precio_promocion Decimal? @db.Decimal(10, 2)
+
+  producto  Producto  @relation(fields: [id_producto], references: [id_producto])
+  promocion Promocion @relation(fields: [id_promocion], references: [id_promocion])
+
+  @@id([id_producto, id_promocion])
+}
+
+model Notificacion {
+  id_notificacion Int      @id @default(autoincrement())
+  id_usuario      Int?
+  titulo          String   @db.VarChar(50)
+  contenido       String   @db.VarChar(300)
+  fecha_emision   DateTime @db.Timestamp(0)
+  ruta            String?  @db.VarChar(255)
+
+  usuario Usuario? @relation(fields: [id_usuario], references: [id_usuario])
+
+  usuario_notificacion Usuario_Notificacion[]
+}
+
+model Usuario_Notificacion {
+  id_usuario     Int
+  id_notifiacion Int
+  leida          Boolean
+
+  usuario      Usuario      @relation(fields: [id_usuario], references: [id_usuario])
+  notificacion Notificacion @relation(fields: [id_notifiacion], references: [id_notificacion])
+
+  @@id([id_usuario, id_notifiacion])
+}
+
+model Pedido_Usuario {
+  id_pedido_usuario Int              @id @default(autoincrement())
+  id_pedido         Int
+  id_usuario        Int?
+  tipo_cliente      tipo_cliente_enum
+  nombre_completo   String           @db.VarChar(80)
+  telefono_cliente  String           @db.VarChar(16)
+  correo_cliente String @db.VarChar(100)
+  fecha             DateTime         @db.Timestamp(0)
+
+  pedido   Pedido   @relation(fields: [id_pedido], references: [id_pedido])
+  usuario  Usuario? @relation(fields: [id_usuario], references: [id_usuario])
+
+  factura  Factura[]
+
+  @@index([id_pedido])
+  @@index([tipo_cliente])
+}
+
+model Devolucion {
+  id_devolucion        Int                   @id @default(autoincrement())
+  numero_devolucion    String                @unique @db.VarChar(50)
+  fecha                DateTime              @db.Timestamp(0)
+  motivo               String                @db.VarChar(255)
+  tipo                 tipo_devolucion_enum
+  estado               estado_devolucion_enum
+  monto_subtotal       Decimal               @db.Decimal(10, 2)
+  monto_iva            Decimal               @db.Decimal(10, 2)
+  monto_total          Decimal               @db.Decimal(10, 2)
+  id_factura           Int
+  id_usuario_registra  Int
+  id_usuario_aprueba   Int?
+
+  factura          Factura  @relation(fields: [id_factura], references: [id_factura])
+  usuario_registra Usuario  @relation("DevolucionUsuarioRegistra", fields: [id_usuario_registra], references: [id_usuario])
+  usuario_aprueba  Usuario? @relation("DevolucionUsuarioAprueba", fields: [id_usuario_aprueba], references: [id_usuario])
+
+  devolucion_detalle Devolucion_Detalle[]
+}
+
+model Devolucion_Detalle {
+  id_devolucion_detalle Int     @id @default(autoincrement())
+  id_devolucion         Int
+  id_factura_detalle    Int
+  cantidad              Int
+  precio_unitario       Decimal @db.Decimal(10, 2)
+  descuento             Decimal @db.Decimal(10, 2)
+  subtotal              Decimal @db.Decimal(10, 2)
+  total                 Decimal @db.Decimal(10, 2)
+
+  devolucion      Devolucion      @relation(fields: [id_devolucion], references: [id_devolucion])
+  factura_detalle Factura_Detalle @relation(fields: [id_factura_detalle], references: [id_factura_detalle])
+}
+
+model Carrito {
+  id_carrito    Int       @id @default(autoincrement())
+  id_usuario    Int
+  id_sucursal   Int
+  fecha_creacion DateTime @default(now())
+
+  usuario       Usuario   @relation(fields: [id_usuario], references: [id_usuario])
+  sucursal      Sucursal  @relation(fields: [id_sucursal], references: [id_sucursal])
+  carrito_detalle Carrito_Detalle[]
+
+  @@unique([id_usuario, id_sucursal])
+}
+
+model Carrito_Detalle {
+  id_carrito_detalle Int @id @default(autoincrement())
+  id_carrito         Int
+  id_producto        Int
+  cantidad           Int
+
+  carrito  Carrito  @relation(fields: [id_carrito], references: [id_carrito], onDelete: Cascade)
+  producto Producto @relation(fields: [id_producto], references: [id_producto])
+}

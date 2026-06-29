@@ -1,0 +1,88 @@
+@import url('https://fonts.googleapis.com/css2?family=Arimo&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+:root {
+  font-family: 'Arimo', system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark;
+  color: rgba(255, 255, 255, 0.87);
+  background-color: #242424;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  font-weight: 500;
+  color: #646cff;
+  text-decoration: inherit;
+}
+
+a:hover {
+  color: #535bf2;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: #f3f4f6;
+  color: #1a1a1a;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button {
+  cursor: pointer;
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+.custom-multi-select .ant-select-selector {
+  padding: 4px 8px !important;
+  border-radius: 10px !important;
+}
+
+.custom-multi-select .ant-select-selection-item {
+  background: #f0f9ff !important;
+  border: 1px solid #bae7ff !important;
+  border-radius: 6px !important;
+  font-family: 'Inter', sans-serif !important;
+  font-size: 13px !important;
+  height: 28px !important;
+  line-height: 26px !important;
+  margin-top: 4px !important;
+  margin-bottom: 4px !important;
+  display: flex !important;
+  align-items: center !important;
+  padding-left: 8px !important;
+  padding-right: 4px !important;
+  color: #0050b3 !important;
+}
+
+.custom-multi-select .ant-select-selection-item-remove {
+  display: flex !important;
+  align-items: center !important;
+  margin-left: 4px !important;
+}
+
+.custom-multi-select .ant-select-selection-placeholder {
+  font-family: 'Arimo', sans-serif !important;
+  color: rgba(26, 26, 26, 0.5) !important;
+}
