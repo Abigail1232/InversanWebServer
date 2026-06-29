@@ -50,7 +50,7 @@ services:
       context: ./Web/FrontEnd/
       dockerfile: ./Dockerfile
       args:
-        - VITE_API_URL=http://localhost:3000
+        - VITE_API_URL=http://localhost:3003
     container_name: inversan_frontend
     ports:
       - "5000:5000"
@@ -65,7 +65,7 @@ services:
     container_name: inversan_backend
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "3003:3003"
     env_file:
       - .env
     depends_on:
