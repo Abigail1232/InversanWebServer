@@ -15,6 +15,9 @@ import {
 import { DataTable, type DataTableColumn } from "../../components/DataTable";
 import { getUsers } from "../../api/user/user";
 import { FilterBar } from "../../components/FilterBar";
+import markerIconUrl from "leaflet/dist/images/marker-icon.png?url";
+import markerIconRetinaUrl from "leaflet/dist/images/marker-icon-2x.png?url";
+import markerShadowUrl from "leaflet/dist/images/marker-shadow.png?url";
 
 type BranchStatus = "Inactivo" | "Activo";
 const BRANCH_CHANGED_EVENT = "branchChanged";
@@ -100,9 +103,9 @@ function MapPickerLazy({
 
         // Fix iconos (Vite + Leaflet)
         const icon = new Lmod.Icon({
-          iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-          iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-          shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+          iconUrl: markerIconUrl,
+          iconRetinaUrl: markerIconRetinaUrl,
+          shadowUrl: markerShadowUrl,
           iconSize: [25, 41],
           iconAnchor: [12, 41],
         });

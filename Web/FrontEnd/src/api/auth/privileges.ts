@@ -9,7 +9,6 @@ export type Privilegio = {
   descripcion: string;
 };
 
-
 export async function getPrivilegesUser() : Promise<Privilegio[]>{
     const token = safeLocalStorage.getItem("token");
     if (!token) return [];

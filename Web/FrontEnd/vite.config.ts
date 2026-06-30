@@ -20,7 +20,7 @@ export default defineConfig(async () => {
       host: true,
     },
     optimizeDeps: {
-      include: ['react', 'react-dom'],
+      include: ['react', 'react-dom', 'leaflet', 'react-leaflet'],
     },
     build: {
       rollupOptions: {

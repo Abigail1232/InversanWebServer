@@ -40,14 +40,32 @@ const PORT = process.env.PORT || 3000;
 const visitasRoutes = require("./Routes/visitas");
 const reportesRoutes = require("./Routes/reportes_route");
 
+const allowedOrigins = [
+  process.env.FRONTEND_URL || "http://localhost:5173",
+  "https://web-inversan.vercel.app",
+  /https:\/\/web-inversan.*\.vercel\.app$/,
+  "https://grupoinversan.com",
+  "https://www.grupoinversan.com",
+  /^https:\/\/([a-z0-9-]+\.)*grupoinversan\.com$/,
+  ...(process.env.CORS_ORIGINS || "")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean),
+];
+
 // Middlewares globales
 app.use(
   cors({
-    origin: [
-      process.env.FRONTEND_URL || "http://localhost:5173",
-      "https://web-inversan.vercel.app",
-      /https:\/\/web-inversan.*\.vercel\.app$/,
-    ],
+    origin(origin, callback) {
+      if (!origin) return callback(null, true);
+
+      const allowed = allowedOrigins.some((allowedOrigin) => {
+        if (allowedOrigin instanceof RegExp) return allowedOrigin.test(origin);
+        return allowedOrigin === origin;
+      });
+
+      return callback(allowed ? null : new Error("Origen no permitido por CORS"), allowed);
+    },
     credentials: true,
     allowedHeaders: ['Content-Type', 'Authorization', 'x-cart-token'],
     exposedHeaders: ['x-cart-token']

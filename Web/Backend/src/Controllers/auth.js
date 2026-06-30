@@ -1,5 +1,24 @@
 const authService = require("../Services/AuthService");
 
+function getCookieOptions() {
+  const isProduction = process.env.NODE_ENV === "production";
+  const cookieDomain =
+    process.env.COOKIE_DOMAIN || (isProduction ? ".grupoinversan.com" : undefined);
+
+  return {
+    httpOnly: true,
+    secure: isProduction || process.env.COOKIE_SECURE === "true",
+    sameSite: isProduction ? "none" : "lax",
+    domain: cookieDomain,
+    maxAge: 2 * 60 * 60 * 1000,
+  };
+}
+
+function getClearCookieOptions() {
+  const { maxAge, ...options } = getCookieOptions();
+  return options;
+}
+
 /**
  * Registra un usuario nuevo en el sistema.
  *
@@ -51,12 +70,7 @@ async function login(req, res) {
     const { Nameusuario, clave } = req.body;
     const result = await authService.login(Nameusuario, clave);
 
-    res.cookie("token", result.token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-      maxAge: 60 * 60 * 1000,
-    });
+    res.cookie("token", result.token, getCookieOptions());
 
     delete result.usuario.clave;
 
@@ -82,16 +96,8 @@ async function login(req, res) {
  */
 async function logout(req, res) {
   try {
-    res.clearCookie("token", {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-    });
-    res.clearCookie("cart", {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-    });
+    res.clearCookie("token", getClearCookieOptions());
+    res.clearCookie("cart", getClearCookieOptions());
 
     return res.status(200).json({
       mensaje: "Sesión cerrada exitosamente",

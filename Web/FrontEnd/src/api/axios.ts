@@ -7,7 +7,7 @@
 import axios from 'axios';
 import { safeLocalStorage } from '../utils/storage';
 
-const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const apiBaseUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3000').replace(/\/+$/, '');
 
 const api = axios.create({
   baseURL: apiBaseUrl,

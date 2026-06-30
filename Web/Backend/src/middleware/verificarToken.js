@@ -9,8 +9,20 @@ require("dotenv").config();
 
 const prisma = require("../config/database");
 
+function logAuthDebug(label, value) {
+  if (process.env.DEBUG_AUTH === "true") {
+    console.log(`[auth-debug] ${label}:`, value);
+  }
+}
+
 async function verificarToken(req, res, next) {
-  const token = req.cookies.token || req.headers.authorization?.split(" ")[1];
+  const authHeader = req.headers.authorization || "";
+  const token =
+    req.cookies.token ||
+    (authHeader.startsWith("Bearer ") ? authHeader.slice(7) : undefined);
+
+  logAuthDebug("req.headers.authorization", req.headers.authorization);
+  logAuthDebug("req.cookies", req.cookies);
 
   if (!token) {
     return res.status(401).json({ error: "Token no proporcionado!" });
@@ -18,10 +30,15 @@ async function verificarToken(req, res, next) {
 
   try {
     const decoded = jsonwebtoken.verify(token, process.env.JWT_SECRET);
+    const idUsuario = Number(decoded.id || decoded.id_usuario);
+
+    if (!idUsuario || Number.isNaN(idUsuario)) {
+      return res.status(403).json({ error: "Token invalido!" });
+    }
     
     // Verificar en la DB si el usuario sigue activo
     const usuario = await prisma.usuario.findUnique({
-      where: { id_usuario: decoded.id },
+      where: { id_usuario: idUsuario },
       include: { rol: true }
     });
 
@@ -37,7 +54,14 @@ async function verificarToken(req, res, next) {
       return res.status(403).json({ error: "Su rol ha sido desactivado." });
     }
 
-    req.user = decoded;
+    req.user = {
+      ...decoded,
+      id: idUsuario,
+      id_usuario: idUsuario,
+      rol: usuario.id_rol,
+      id_rol: usuario.id_rol,
+    };
+    logAuthDebug("req.user", req.user);
     next();
   } catch (err) {
     return res.status(403).json({ error: "Token inválido!" });
