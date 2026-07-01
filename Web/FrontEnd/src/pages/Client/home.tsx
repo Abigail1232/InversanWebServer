@@ -19,10 +19,12 @@ export default function HomePage() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const fetchPromotions = async () => {
     const res = await getPromotions();
+    console.log(res);
     const now = new Date();
     const data = res.filter(promo => {
       return new Date(promo.fecha_finalizacion) >= now;
     });
+    console.log(data);
     setPromotions(data);
   };
 

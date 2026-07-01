@@ -577,7 +577,7 @@ async function ListarPrivilegiosMe(req, res) {
       return res.status(404).json({ error: "Usuario no encontrado" });
     }
 
-    const privilegios = (usuarioConPrivilegios.rol?.rol_privilegio ?? []).map(
+    const privilegios = usuarioConPrivilegios.rol.rol_privilegio.map(
       (rp) => rp.privilegio
     );
 
@@ -608,7 +608,7 @@ async function ListarPrivilegiosUsuario(req, res) {
       return res.status(404).json({ error: "Usuario no encontrado" });
     }
 
-    const privilegios = (usuarioConPrivilegios.rol?.rol_privilegio ?? []).map(
+    const privilegios = usuarioConPrivilegios.rol.rol_privilegio.map(
       (rp) => rp.privilegio
     );
 

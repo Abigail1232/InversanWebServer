@@ -7,9 +7,6 @@
 import axios from 'axios';
 import { safeLocalStorage } from '../utils/storage';
 
-// Garantiza que TODAS las llamadas axios (incluyendo imports directos) envíen cookies
-axios.defaults.withCredentials = true;
-
 const apiBaseUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3000').replace(/\/+$/, '');
 
 const api = axios.create({

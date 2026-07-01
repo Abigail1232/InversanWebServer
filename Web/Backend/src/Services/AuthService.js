@@ -110,52 +110,42 @@ class AuthService {
   }
 
   async login(Nameusuario, clave) {
-    const usuarioInput = typeof Nameusuario === "string" ? Nameusuario.trim() : "";
-    const claveInput = typeof clave === "string" ? clave : "";
-
-    if (!usuarioInput || !claveInput) {
-      throw { status: 400, message: "Ingrese usuario y contraseña." };
+    if (!Nameusuario || !clave) {
+      throw { status: 400, message: "Ingresar nombre y contraseña!" };
     }
 
     const Usuariof = await prisma.usuario.findFirst({
-      where: {
-        OR: [
-          { usuario: usuarioInput },
-          { correo: usuarioInput.toLowerCase() },
-        ],
-      },
-      include: { rol: true },
+      where: { usuario: Nameusuario },
+      include: { rol: true } // Incluimos el rol para verificar si está activo también
     });
 
-    const INVALID_CREDENTIALS_MSG = "Usuario o contraseña incorrectos.";
-
     if (!Usuariof) {
-      throw { status: 401, message: INVALID_CREDENTIALS_MSG };
+      throw { status: 401, message: "Usuario no encontrado!" };
     }
 
+    // Verificar si el usuario está activo
     if (!Usuariof.activo) {
       throw { status: 403, message: "Su cuenta está desactivada. Contacte al administrador." };
     }
 
+    // Opcional: Verificar si el rol del usuario está activo
     if (Usuariof.rol && !Usuariof.rol.activo) {
       throw { status: 403, message: "Su rol de usuario está desactivado. Contacte al administrador." };
     }
 
-    const verificar_contra = await bcrypt.compare(claveInput, Usuariof.clave);
+    const verificar_contra = await bcrypt.compare(clave, Usuariof.clave);
     if (!verificar_contra) {
-      throw { status: 401, message: INVALID_CREDENTIALS_MSG };
+      throw { status: 401, message: "Contraseña incorrecta!" };
     }
 
     const payload = {
       id: Usuariof.id_usuario,
-      id_usuario: Usuariof.id_usuario,
       nombre: Usuariof.usuario,
       rol: Usuariof.id_rol,
-      id_rol: Usuariof.id_rol,
     };
 
     const token = jsonwebtoken.sign(payload, process.env.JWT_SECRET, {
-      expiresIn: process.env.JWT_EXPIRES_IN || "7d",
+      expiresIn: "2h",
     });
 
     return { token, usuario: Usuariof };
@@ -163,10 +153,12 @@ class AuthService {
 
   async solicitarRecuperacion(correo) {
     const usuario = await prisma.usuario.findFirst({ where: { correo } });
+    if (!usuario) {
+      throw { status: 404, message: "Usuario no encontrado" };
+    }
 
-    // Respuesta genérica siempre: no revelar si el correo existe o no (evita user enumeration)
-    if (!usuario || !usuario.activo) {
-      return true; // Silencioso — el frontend siempre muestra "Código enviado si el correo existe"
+    if (!usuario.activo) {
+      throw { status: 403, message: "Esta cuenta está desactivada. No se puede realizar la recuperación de contraseña." };
     }
 
     const codigo = Math.floor(100000 + Math.random() * 900000).toString();
@@ -230,7 +222,7 @@ class AuthService {
 
     const usuario = await prisma.usuario.findFirst({ where: { correo } });
     if (!usuario) {
-      throw { status: 404, message: "Credenciales inválidas" };
+      throw { status: 404, message: "Usuario no encontrado" };
     }
 
     const passDiferente = await bcrypt.compare(nuevaClave, usuario.clave);

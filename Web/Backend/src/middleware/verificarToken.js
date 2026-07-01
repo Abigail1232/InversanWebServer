@@ -1,52 +1,57 @@
 /**
  * Middleware de protección de rutas.
- * Lee JWT desde cookie `token` o header `Authorization: Bearer`.
+ *
+ * Verifica que el token JWT esté presente en cookies o cabeceras Authorization
+ * y agrega el usuario decodificado a `req.user`.
  */
 const jsonwebtoken = require("jsonwebtoken");
+require("dotenv").config();
+
 const prisma = require("../config/database");
 
-function getToken(req) {
-  const cookieToken = req.cookies?.token || null;
-  const authHeader = req.headers.authorization || "";
-  const headerToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
-  return cookieToken || headerToken;
+function logAuthDebug(label, value) {
+  if (process.env.DEBUG_AUTH === "true") {
+    console.log(`[auth-debug] ${label}:`, value);
+  }
 }
 
 async function verificarToken(req, res, next) {
-  const token = getToken(req);
+  const authHeader = req.headers.authorization || "";
+  const token =
+    req.cookies.token ||
+    (authHeader.startsWith("Bearer ") ? authHeader.slice(7) : undefined);
+
+  logAuthDebug("req.headers.authorization", req.headers.authorization);
+  logAuthDebug("req.cookies", req.cookies);
 
   if (!token) {
-    return res.status(401).json({ success: false, error: "No autenticado" });
-  }
-
-  let decoded;
-  try {
-    decoded = jsonwebtoken.verify(token, process.env.JWT_SECRET);
-  } catch (error) {
-    return res.status(401).json({ success: false, error: "Token inválido o expirado" });
-  }
-
-  const idUsuario = Number(decoded.id || decoded.id_usuario);
-  if (!idUsuario || Number.isNaN(idUsuario)) {
-    return res.status(401).json({ success: false, error: "Token inválido" });
+    return res.status(401).json({ error: "Token no proporcionado!" });
   }
 
   try {
+    const decoded = jsonwebtoken.verify(token, process.env.JWT_SECRET);
+    const idUsuario = Number(decoded.id || decoded.id_usuario);
+
+    if (!idUsuario || Number.isNaN(idUsuario)) {
+      return res.status(403).json({ error: "Token invalido!" });
+    }
+    
+    // Verificar en la DB si el usuario sigue activo
     const usuario = await prisma.usuario.findUnique({
       where: { id_usuario: idUsuario },
-      include: { rol: true },
+      include: { rol: true }
     });
 
     if (!usuario) {
-      return res.status(401).json({ success: false, error: "Sesión inválida. Inicie sesión nuevamente." });
+      return res.status(403).json({ error: "Usuario no encontrado!" });
     }
 
     if (!usuario.activo) {
-      return res.status(403).json({ success: false, error: "Su cuenta ha sido desactivada." });
+      return res.status(403).json({ error: "Su cuenta ha sido desactivada." });
     }
 
     if (usuario.rol && !usuario.rol.activo) {
-      return res.status(403).json({ success: false, error: "Su rol ha sido desactivado." });
+      return res.status(403).json({ error: "Su rol ha sido desactivado." });
     }
 
     req.user = {
@@ -55,14 +60,11 @@ async function verificarToken(req, res, next) {
       id_usuario: idUsuario,
       rol: usuario.id_rol,
       id_rol: usuario.id_rol,
-      usuario: usuario.usuario,
-      correo: usuario.correo,
     };
-
-    return next();
-  } catch (error) {
-    console.error("[verificarToken] Error DB:", error);
-    return res.status(500).json({ success: false, error: "Error interno al verificar sesión." });
+    logAuthDebug("req.user", req.user);
+    next();
+  } catch (err) {
+    return res.status(403).json({ error: "Token inválido!" });
   }
 }
 

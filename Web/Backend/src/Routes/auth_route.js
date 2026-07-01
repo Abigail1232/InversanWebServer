@@ -9,4 +9,9 @@ router.post("/solicitar-recuperacion", auth.solicitarRecuperacion);
 router.post("/verificar-codigo-solo", auth.verificarCodigoSolo);
 router.post("/verificar-codigo", auth.verificarCodigoYCambiarPassword);
 
+// Ruta protegida de ejemplo
+router.get("/protected", verificarToken, (req, res) => {
+  res.json({ message: "Acceso a ruta protegida concedido!", user: req.user });
+});
+
 module.exports = router;

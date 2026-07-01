@@ -67,10 +67,14 @@ class MarcasService {
   }
 
   async obtenerMarcasFiltro() {
-    // Mostrar marcas activas aunque todavía no tengan productos.
-    // Evita Array(0) después de limpiar datos o crear marcas nuevas.
     const marcas = await prisma.marca.findMany({
-      where: { activo: true },
+      where: {
+        producto: {
+          some: {
+            estado: true
+          }
+        }
+      },
       orderBy: { nombre: "asc" },
     });
 

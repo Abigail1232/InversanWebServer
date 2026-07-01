@@ -15,6 +15,9 @@ class PromocionesService {
       },
     });
 
+    if (promociones.length === 0) {
+      throw { status: 404, message: "No hay promociones activas" };
+    }
     return promociones;
   }
 
@@ -47,7 +50,7 @@ class PromocionesService {
     });
 
     if (!promoconDetalle) {
-      return []; // no promotions
+      throw { status: 404, message: "Promoción no encontrada" };
     }
 
     const [totalProductos, productosPromocion] = await Promise.all([

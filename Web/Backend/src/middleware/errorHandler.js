@@ -11,11 +11,9 @@ const globalErrorHandler = (err, req, res, next) => {
   let error = { ...err };
   error.message = err.message;
 
-  // Siempre loguear para tener visibilidad en producción.
-  // En desarrollo se agrega el stack trace completo.
-  console.error(`[${new Date().toISOString()}] ERROR ${req.method} ${req.path}:`, err.message || err);
+  // Log del error solo en desarrollo para facilitar depuración.
   if (process.env.NODE_ENV === 'development') {
-    console.error('STACK:', err.stack);
+    console.error('ERROR 💥', err);
   }
 
   // Manejo de errores conocidos de Prisma

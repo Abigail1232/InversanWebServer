@@ -4,7 +4,7 @@ import { safeLocalStorage } from '../../utils/storage';
 // Login
 export async function login(username: string, password: string): Promise<{ success: boolean; message?: string }> {
   try {
-    const res = await axios.post("/api/auth/login", {
+    const res = await axios.post("api/auth/login", {
       Nameusuario: username,
       clave: password,
     },
