@@ -1,6 +1,5 @@
 const prisma = require("../config/database");
 const jsonwebtoken = require("jsonwebtoken");
-require("dotenv").config();
 
 // --- HELPERS PARA CARRITO HIBRIDO ---
 const mergeCarts = (baseCart, guestCart) => {
@@ -76,11 +75,16 @@ const saveCartState = async (cart, authUser, res) => {
 
     return "DB_SYNCED";
   } else {
-    const cartToken = jsonwebtoken.sign(cart, process.env.JWT_SECRET);
+    const cartToken = jsonwebtoken.sign(cart, process.env.JWT_SECRET, { expiresIn: "7d" });
+    const isProduction = process.env.NODE_ENV === "production";
+    const cookieDomain = process.env.COOKIE_DOMAIN !== undefined
+      ? process.env.COOKIE_DOMAIN || undefined
+      : (isProduction ? ".grupoinversan.com" : undefined);
     res.cookie("cart", cartToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      secure: isProduction,
+      sameSite: isProduction ? "none" : "lax",
+      ...(cookieDomain && { domain: cookieDomain }),
     });
     return cartToken;
   }
@@ -97,10 +101,15 @@ const clearCartState = async (id_branch, authUser, res) => {
     });
   } else {
     // Limpiamos la cookie para invitados
+    const isProduction = process.env.NODE_ENV === "production";
+    const cookieDomain = process.env.COOKIE_DOMAIN !== undefined
+      ? process.env.COOKIE_DOMAIN || undefined
+      : (isProduction ? ".grupoinversan.com" : undefined);
     res.clearCookie("cart", {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      secure: isProduction,
+      sameSite: isProduction ? "none" : "lax",
+      ...(cookieDomain && { domain: cookieDomain }),
     });
   }
 };

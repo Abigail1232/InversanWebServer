@@ -55,7 +55,7 @@ export async function getMarcas(): Promise<Marca[]> {
     },
   });
 
-  return res.data.data;
+  return Array.isArray(res.data?.data) ? res.data.data : [];
 }
 
 export async function crearMarca(payload: CrearMarca): Promise<Marca> {

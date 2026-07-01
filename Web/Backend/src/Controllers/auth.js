@@ -2,15 +2,17 @@ const authService = require("../Services/AuthService");
 
 function getCookieOptions() {
   const isProduction = process.env.NODE_ENV === "production";
-  const cookieDomain =
-    process.env.COOKIE_DOMAIN || (isProduction ? ".grupoinversan.com" : undefined);
+  const cookieDomain = process.env.COOKIE_DOMAIN !== undefined
+    ? process.env.COOKIE_DOMAIN || undefined
+    : (isProduction ? ".grupoinversan.com" : undefined);
 
   return {
     httpOnly: true,
     secure: isProduction || process.env.COOKIE_SECURE === "true",
     sameSite: isProduction ? "none" : "lax",
-    domain: cookieDomain,
-    maxAge: 2 * 60 * 60 * 1000,
+    path: "/",
+    ...(cookieDomain && { domain: cookieDomain }),
+    maxAge: 7 * 24 * 60 * 60 * 1000,
   };
 }
 
@@ -67,7 +69,13 @@ async function register(req, res) {
  */
 async function login(req, res) {
   try {
-    const { Nameusuario, clave } = req.body;
+    const Nameusuario =
+      req.body.Nameusuario ||
+      req.body.usuario ||
+      req.body.username ||
+      req.body.correo ||
+      req.body.email;
+    const clave = req.body.clave || req.body.password || req.body.contrasena;
     const result = await authService.login(Nameusuario, clave);
 
     res.cookie("token", result.token, getCookieOptions());
