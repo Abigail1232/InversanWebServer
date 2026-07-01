@@ -8,6 +8,12 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 
+// Validación de variables de entorno críticas — falla rápido en lugar de 403 silencioso
+if (!process.env.JWT_SECRET) {
+  console.error("FATAL: JWT_SECRET no está definido. El servidor no puede iniciar.");
+  process.exit(1);
+}
+
 const pedidoRoutes = require("./Routes/pedido_route");
 const departmentsRoutes = require("./Routes/departments");
 const entriesRoutes = require("./Routes/entries");
@@ -24,9 +30,7 @@ const bodegaRoutes = require("./Routes/bodega");
 const cartRoutes = require("./Routes/cart");
 const notificationRoutes = require("./Routes/notificaciones");
 const modelRoutes = require("./Routes/models");
-const swaggerUi = require("swagger-ui-express");
 const cookieParser = require("cookie-parser");
-const swaggerJsdoc = require("swagger-jsdoc");
 const suggestionsRoutes = require("./Routes/suggestions");
 const paypalRoutes = require("./Routes/paypal_route");
 const promocionesRoutes = require("./Routes/promociones");
@@ -41,34 +45,33 @@ const visitasRoutes = require("./Routes/visitas");
 const reportesRoutes = require("./Routes/reportes_route");
 
 const allowedOrigins = [
-  process.env.FRONTEND_URL || "http://localhost:5173",
-  "https://web-inversan.vercel.app",
-  /https:\/\/web-inversan.*\.vercel\.app$/,
   "https://grupoinversan.com",
   "https://www.grupoinversan.com",
-  /^https:\/\/([a-z0-9-]+\.)*grupoinversan\.com$/,
-  ...(process.env.CORS_ORIGINS || "")
-    .split(",")
-    .map((origin) => origin.trim())
-    .filter(Boolean),
+  "https://api.grupoinversan.com",
+  "http://localhost:5173",
+  "http://localhost:3000",
 ];
 
 // Middlewares globales
 app.use(
   cors({
-    origin(origin, callback) {
+    origin: function (origin, callback) {
+      // Permitir peticiones sin Origin (server-to-server, Postman, curl)
       if (!origin) return callback(null, true);
 
-      const allowed = allowedOrigins.some((allowedOrigin) => {
-        if (allowedOrigin instanceof RegExp) return allowedOrigin.test(origin);
-        return allowedOrigin === origin;
-      });
+      if (process.env.DEBUG_CORS === "true") {
+        console.log("[CORS] Origin:", origin);
+      }
 
-      return callback(allowed ? null : new Error("Origen no permitido por CORS"), allowed);
+      const allowed = allowedOrigins.some((o) =>
+        o instanceof RegExp ? o.test(origin) : o === origin
+      );
+      return callback(null, allowed);
     },
     credentials: true,
-    allowedHeaders: ['Content-Type', 'Authorization', 'x-cart-token'],
-    exposedHeaders: ['x-cart-token']
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "x-cart-token"],
+    exposedHeaders: ["x-cart-token"],
   })
 );
 app.use(express.json());
@@ -100,7 +103,6 @@ app.use("/api/models", modelRoutes);
 app.use("/api/marcas", marcaRoutes);
 app.use("/api/disenos", disenosRoutes);
 app.use("/api/dashboard", dashboardRoutes);
-app.use("/assets", express.static(path.join(process.cwd(), "assets")));
 app.use("/api/producto-event", visitasRoutes);
 app.use("/api/reportes", reportesRoutes);
 
@@ -129,6 +131,8 @@ const swaggerOptions = {
 
 // Documentación Swagger — solo disponible fuera de producción
 if (process.env.NODE_ENV !== "production") {
+  const swaggerUi = require("swagger-ui-express");
+  const swaggerJsdoc = require("swagger-jsdoc");
   const swaggerDocs = swaggerJsdoc(swaggerOptions);
   app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 }

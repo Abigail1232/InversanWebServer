@@ -5,8 +5,6 @@
  * y agrega el usuario decodificado a `req.user`.
  */
 const jsonwebtoken = require("jsonwebtoken");
-require("dotenv").config();
-
 const prisma = require("../config/database");
 
 function logAuthDebug(label, value) {
@@ -17,25 +15,40 @@ function logAuthDebug(label, value) {
 
 async function verificarToken(req, res, next) {
   const authHeader = req.headers.authorization || "";
-  const token =
-    req.cookies.token ||
-    (authHeader.startsWith("Bearer ") ? authHeader.slice(7) : undefined);
+  const cookieToken = req.cookies?.token || null;
+  const headerToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
 
   logAuthDebug("req.headers.authorization", req.headers.authorization);
   logAuthDebug("req.cookies", req.cookies);
 
-  if (!token) {
+  if (!cookieToken && !headerToken) {
     return res.status(401).json({ error: "Token no proporcionado!" });
   }
 
+  // Intenta primero la cookie; si falla y hay un header token distinto, lo reintenta.
+  let decoded;
+  const primaryToken = cookieToken || headerToken;
   try {
-    const decoded = jsonwebtoken.verify(token, process.env.JWT_SECRET);
-    const idUsuario = Number(decoded.id || decoded.id_usuario);
-
-    if (!idUsuario || Number.isNaN(idUsuario)) {
-      return res.status(403).json({ error: "Token invalido!" });
+    decoded = jsonwebtoken.verify(primaryToken, process.env.JWT_SECRET);
+  } catch (primaryErr) {
+    if (headerToken && headerToken !== cookieToken) {
+      try {
+        decoded = jsonwebtoken.verify(headerToken, process.env.JWT_SECRET);
+      } catch {
+        return res.status(401).json({ error: "Token inválido" });
+      }
+    } else {
+      return res.status(401).json({ error: "Token inválido" });
     }
-    
+  }
+
+  const idUsuario = Number(decoded.id || decoded.id_usuario);
+
+  if (!idUsuario || Number.isNaN(idUsuario)) {
+    return res.status(401).json({ error: "Token inválido" });
+  }
+
+  try {
     // Verificar en la DB si el usuario sigue activo
     const usuario = await prisma.usuario.findUnique({
       where: { id_usuario: idUsuario },
@@ -63,8 +76,9 @@ async function verificarToken(req, res, next) {
     };
     logAuthDebug("req.user", req.user);
     next();
-  } catch (err) {
-    return res.status(403).json({ error: "Token inválido!" });
+  } catch (dbErr) {
+    console.error("[verificarToken] Error de DB al verificar sesión:", dbErr);
+    return res.status(500).json({ error: "Error interno al verificar sesión." });
   }
 }
 

@@ -2,14 +2,17 @@ const authService = require("../Services/AuthService");
 
 function getCookieOptions() {
   const isProduction = process.env.NODE_ENV === "production";
-  const cookieDomain =
-    process.env.COOKIE_DOMAIN || (isProduction ? ".grupoinversan.com" : undefined);
+  // .grupoinversan.com permite compartir la cookie entre api. y el frontend raíz.
+  // Si el backend no está en grupoinversan.com, configurar COOKIE_DOMAIN="" para desactivarlo.
+  const cookieDomain = process.env.COOKIE_DOMAIN !== undefined
+    ? process.env.COOKIE_DOMAIN || undefined
+    : (isProduction ? ".grupoinversan.com" : undefined);
 
   return {
     httpOnly: true,
-    secure: isProduction || process.env.COOKIE_SECURE === "true",
-    sameSite: isProduction ? "none" : "lax",
-    domain: cookieDomain,
+    secure: isProduction,          // true en producción (HTTPS via Cloudflare)
+    sameSite: isProduction ? "none" : "lax",  // none obligatorio cross-subdomain en prod
+    ...(cookieDomain && { domain: cookieDomain }),
     maxAge: 2 * 60 * 60 * 1000,
   };
 }

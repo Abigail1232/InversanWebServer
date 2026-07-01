@@ -156,12 +156,10 @@ class AuthService {
 
   async solicitarRecuperacion(correo) {
     const usuario = await prisma.usuario.findFirst({ where: { correo } });
-    if (!usuario) {
-      throw { status: 404, message: "Usuario no encontrado" };
-    }
 
-    if (!usuario.activo) {
-      throw { status: 403, message: "Esta cuenta está desactivada. No se puede realizar la recuperación de contraseña." };
+    // Respuesta genérica siempre: no revelar si el correo existe o no (evita user enumeration)
+    if (!usuario || !usuario.activo) {
+      return true; // Silencioso — el frontend siempre muestra "Código enviado si el correo existe"
     }
 
     const codigo = Math.floor(100000 + Math.random() * 900000).toString();

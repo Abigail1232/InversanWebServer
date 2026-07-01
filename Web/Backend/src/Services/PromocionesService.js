@@ -15,9 +15,6 @@ class PromocionesService {
       },
     });
 
-    if (promociones.length === 0) {
-      throw { status: 404, message: "No hay promociones activas" };
-    }
     return promociones;
   }
 
