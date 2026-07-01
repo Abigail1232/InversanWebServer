@@ -2,8 +2,17 @@ const jsonwebtoken = require("jsonwebtoken");
 
 const prisma = require("../config/database");
 
+function logAuthDebug(label, value) {
+  if (process.env.DEBUG_AUTH === "true") {
+    console.log(`[auth-debug-optional] ${label}:`, value);
+  }
+}
+
 async function verificarTokenOpcional(req, res, next) {
   const token = req.cookies?.token || req.headers.authorization?.split(" ")[1];
+
+  logAuthDebug("req.headers.authorization", req.headers.authorization);
+  logAuthDebug("req.cookies", req.cookies);
 
   // ✅ Si no hay token → invitado, NO bloquea
   if (!token) {
@@ -24,7 +33,7 @@ async function verificarTokenOpcional(req, res, next) {
     } else {
       req.user = decoded; // ✅ logueado y activo
     }
-    
+    logAuthDebug("req.user", req.user);
     return next();
   } catch (err) {
     // ✅ token inválido → tratamos como invitado (NO bloquea)

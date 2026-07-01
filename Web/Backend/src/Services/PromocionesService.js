@@ -5,8 +5,13 @@ class PromocionesService {
     const promociones = await prisma.promocion.findMany({
       select: {
         id_promocion: true,
+        titulo: true,
+        descripcion: true,
         banner_url: true,
+        fecha_inicio: true,
         fecha_finalizacion: true,
+        mostrar_precio_porcentaje: true,
+        mostrar_precio_tachado: true,
       },
     });
 
