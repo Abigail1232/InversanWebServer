@@ -47,7 +47,7 @@ class PromocionesService {
     });
 
     if (!promoconDetalle) {
-      throw { status: 404, message: "Promoción no encontrada" };
+      return []; // no promotions
     }
 
     const [totalProductos, productosPromocion] = await Promise.all([

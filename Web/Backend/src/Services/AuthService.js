@@ -223,7 +223,7 @@ class AuthService {
 
     const usuario = await prisma.usuario.findFirst({ where: { correo } });
     if (!usuario) {
-      throw { status: 404, message: "Usuario no encontrado" };
+      throw { status: 404, message: "Credenciales inválidas" };
     }
 
     const passDiferente = await bcrypt.compare(nuevaClave, usuario.clave);

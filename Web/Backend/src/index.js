@@ -7,6 +7,8 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
+const helmet = require("helmet");
+const rateLimit = require("express-rate-limit");
 
 // Validación de variables de entorno críticas — falla rápido en lugar de 403 silencioso
 if (!process.env.JWT_SECRET) {
@@ -39,18 +41,25 @@ const dashboardRoutes = require("./Routes/dashboard");
 const disenosRoutes = require("./Routes/disenos");
 const path = require("path");
 const app = express();
+
+// SECURITY ENTERPRISE
+app.use(helmet());
+app.use(express.json({ limit: '1mb' }));
+app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 300 }));
 app.set("trust proxy", 1);
 const PORT = process.env.PORT || 3000;
 const visitasRoutes = require("./Routes/visitas");
 const reportesRoutes = require("./Routes/reportes_route");
 
+const 
 const allowedOrigins = [
   "https://grupoinversan.com",
   "https://www.grupoinversan.com",
   "https://api.grupoinversan.com",
   "http://localhost:5173",
-  "http://localhost:3000",
+  "http://localhost:3000"
 ];
+
 
 // Middlewares globales
 app.use(
