@@ -39,6 +39,7 @@ app.set("trust proxy", 1);
 const PORT = process.env.PORT || 3000;
 const visitasRoutes = require("./Routes/visitas");
 const reportesRoutes = require("./Routes/reportes_route");
+const asistenciasRoutes = require("./Routes/asistencias");
 
 const allowedOrigins = [
   process.env.FRONTEND_URL || "http://localhost:5173",
@@ -103,6 +104,7 @@ app.use("/api/dashboard", dashboardRoutes);
 app.use("/assets", express.static(path.join(process.cwd(), "assets")));
 app.use("/api/producto-event", visitasRoutes);
 app.use("/api/reportes", reportesRoutes);
+app.use("/api/asistencias", asistenciasRoutes);
 
 // Health check básico para verificar que el servidor responde
 app.get("/", (req, res) => {

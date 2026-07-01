@@ -105,6 +105,10 @@ model Usuario {
   producto_visitas               Producto_Visitas[]
   busqueda_interna               Busqueda_Interna[]
   carrito                        Carrito[]
+
+  asistencias_trabajador    Asistencia[] @relation("AsistenciaTrabajador")
+  asistencias_registradas   Asistencia[] @relation("AsistenciaRegistradaPor")
+  asistencias_actualizadas  Asistencia[] @relation("AsistenciaActualizadaPor")
 }
 
 model Rol {
@@ -153,6 +157,7 @@ model Sucursal {
   empleado_sucursal Empleado_Sucursal[]
   producto_visitas  Producto_Visitas[]
   carrito           Carrito[]
+  asistencia        Asistencia[]
 }
 
 model Departamento {
@@ -182,6 +187,30 @@ model Empleado_Sucursal {
   sucursal  Sucursal  @relation(fields: [id_sucursal], references: [id_sucursal])
 
   @@unique([id_usuario, id_sucursal]) // evita duplicados
+}
+
+model Asistencia {
+  id_asistencia    Int      @id @default(autoincrement())
+  id_usuario       Int
+  id_sucursal      Int
+  fecha            DateTime @db.Date
+  hora_entrada     String   @db.VarChar(5)
+  horas_faltadas   Int      @default(0)
+  categoria        String   @db.VarChar(30)
+  observacion      String?  @db.VarChar(255)
+  registrado_por   Int?
+  actualizado_por  Int?
+  creado_en        DateTime @default(now()) @db.Timestamp(0)
+  actualizado_en   DateTime @updatedAt @db.Timestamp(0)
+
+  usuario           Usuario  @relation("AsistenciaTrabajador", fields: [id_usuario], references: [id_usuario])
+  sucursal          Sucursal @relation(fields: [id_sucursal], references: [id_sucursal])
+  usuario_registra  Usuario? @relation("AsistenciaRegistradaPor", fields: [registrado_por], references: [id_usuario])
+  usuario_actualiza Usuario? @relation("AsistenciaActualizadaPor", fields: [actualizado_por], references: [id_usuario])
+
+  @@unique([id_usuario, id_sucursal, fecha])
+  @@index([id_sucursal, fecha])
+  @@index([id_usuario, fecha])
 }
 
 model Visita_Usuario {
