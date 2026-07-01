@@ -110,45 +110,52 @@ class AuthService {
   }
 
   async login(Nameusuario, clave) {
-    if (!Nameusuario || !clave) {
-      throw { status: 400, message: "Ingresar nombre y contraseña!" };
+    const usuarioInput = typeof Nameusuario === "string" ? Nameusuario.trim() : "";
+    const claveInput = typeof clave === "string" ? clave : "";
+
+    if (!usuarioInput || !claveInput) {
+      throw { status: 400, message: "Ingrese usuario y contraseña." };
     }
 
     const Usuariof = await prisma.usuario.findFirst({
-      where: { usuario: Nameusuario },
-      include: { rol: true } // Incluimos el rol para verificar si está activo también
+      where: {
+        OR: [
+          { usuario: usuarioInput },
+          { correo: usuarioInput.toLowerCase() },
+        ],
+      },
+      include: { rol: true },
     });
 
-    // Mensaje genérico para evitar user enumeration (mismo error para usuario no encontrado o clave incorrecta)
     const INVALID_CREDENTIALS_MSG = "Usuario o contraseña incorrectos.";
 
     if (!Usuariof) {
       throw { status: 401, message: INVALID_CREDENTIALS_MSG };
     }
 
-    // Verificar si el usuario está activo
     if (!Usuariof.activo) {
       throw { status: 403, message: "Su cuenta está desactivada. Contacte al administrador." };
     }
 
-    // Opcional: Verificar si el rol del usuario está activo
     if (Usuariof.rol && !Usuariof.rol.activo) {
       throw { status: 403, message: "Su rol de usuario está desactivado. Contacte al administrador." };
     }
 
-    const verificar_contra = await bcrypt.compare(clave, Usuariof.clave);
+    const verificar_contra = await bcrypt.compare(claveInput, Usuariof.clave);
     if (!verificar_contra) {
       throw { status: 401, message: INVALID_CREDENTIALS_MSG };
     }
 
     const payload = {
       id: Usuariof.id_usuario,
+      id_usuario: Usuariof.id_usuario,
       nombre: Usuariof.usuario,
       rol: Usuariof.id_rol,
+      id_rol: Usuariof.id_rol,
     };
 
     const token = jsonwebtoken.sign(payload, process.env.JWT_SECRET, {
-      expiresIn: "2h",
+      expiresIn: process.env.JWT_EXPIRES_IN || "7d",
     });
 
     return { token, usuario: Usuariof };

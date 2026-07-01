@@ -68,7 +68,7 @@ interface BrandProductsResponse {
 
 export async function getBrands(): Promise<BrandItem[]> {
   const res = await api.get<BrandsResponse>("/api/products/marcas");
-  const items = res.data?.data ?? [];
+  const items = Array.isArray(res.data?.data) ? res.data.data : [];
 
   return items.map((item) => ({
     id: item.id_marca,

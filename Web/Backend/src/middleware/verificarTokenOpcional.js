@@ -1,20 +1,16 @@
 const jsonwebtoken = require("jsonwebtoken");
-
 const prisma = require("../config/database");
 
-function logAuthDebug(label, value) {
-  if (process.env.DEBUG_AUTH === "true") {
-    console.log(`[auth-debug-optional] ${label}:`, value);
-  }
+function getToken(req) {
+  const cookieToken = req.cookies?.token || null;
+  const authHeader = req.headers.authorization || "";
+  const headerToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
+  return cookieToken || headerToken;
 }
 
 async function verificarTokenOpcional(req, res, next) {
-  const token = req.cookies?.token || req.headers.authorization?.split(" ")[1];
+  const token = getToken(req);
 
-  logAuthDebug("req.headers.authorization", req.headers.authorization);
-  logAuthDebug("req.cookies", req.cookies);
-
-  // ✅ Si no hay token → invitado, NO bloquea
   if (!token) {
     req.user = null;
     return next();
@@ -22,21 +18,33 @@ async function verificarTokenOpcional(req, res, next) {
 
   try {
     const decoded = jsonwebtoken.verify(token, process.env.JWT_SECRET);
-    
-    // Verificar si el usuario sigue activo
+    const idUsuario = Number(decoded.id || decoded.id_usuario);
+
+    if (!idUsuario || Number.isNaN(idUsuario)) {
+      req.user = null;
+      return next();
+    }
+
     const usuario = await prisma.usuario.findUnique({
-      where: { id_usuario: decoded.id }
+      where: { id_usuario: idUsuario },
+      include: { rol: true },
     });
 
-    if (!usuario || !usuario.activo) {
-      req.user = null; // Tratamos como invitado si está desactivado o no existe
-    } else {
-      req.user = decoded; // ✅ logueado y activo
+    if (!usuario || !usuario.activo || (usuario.rol && !usuario.rol.activo)) {
+      req.user = null;
+      return next();
     }
-    logAuthDebug("req.user", req.user);
+
+    req.user = {
+      ...decoded,
+      id: idUsuario,
+      id_usuario: idUsuario,
+      rol: usuario.id_rol,
+      id_rol: usuario.id_rol,
+    };
+
     return next();
-  } catch (err) {
-    // ✅ token inválido → tratamos como invitado (NO bloquea)
+  } catch {
     req.user = null;
     return next();
   }
