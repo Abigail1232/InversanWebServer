@@ -12,9 +12,11 @@ export type Permission =
   | "admin.permisos"
   | "admin.sucursales"
   | "admin.categorias"
-  | "admin.categorias"
   | "inventario.ingreso"
   | "inventario.historial"
+  | "asistencia.marcar"
+  | "asistencia.administrar"
+  | "asistencia.reportes"
   | "reportes.view"
   | "reportes.ventas"
   | "reportes.visitas"
@@ -49,6 +51,15 @@ export function mapPrivilegesToPermissions(privs: Privilegio[]): Permission[] {
 
       case "INV_HISTORIAL":
         perm.push("inventario.historial");
+        break;
+      case "ASI_MARCAR":
+        perm.push("asistencia.marcar");
+        break;
+      case "ASI_ADMINISTRAR":
+        perm.push("asistencia.administrar", "asistencia.marcar");
+        break;
+      case "ASI_REPORTES":
+        perm.push("asistencia.reportes");
         break;
       case "ADM_USUARIOS":
         perm.push("admin.usuarios");
@@ -105,6 +116,9 @@ export function mapPrivilegesToPermissions(privs: Privilegio[]): Permission[] {
           "admin.categorias",
           "inventario.ingreso",
           "inventario.historial",
+          "asistencia.marcar",
+          "asistencia.administrar",
+          "asistencia.reportes",
           "reportes.view",
           "reportes.ventas",
           "reportes.visitas",
@@ -136,6 +150,9 @@ const STAFF_PERMISSIONS: Permission[] = [
   "admin.categorias",
   "inventario.ingreso",
   "inventario.historial",
+  "asistencia.marcar",
+  "asistencia.administrar",
+  "asistencia.reportes",
   "reportes.view",
   "admin.modelos",
   "admin.productos",
@@ -183,6 +200,10 @@ export function getRequiredPermissionForAdminPath(pathname: string): Permission[
 
   // Pedidos
   if (path === "/admin/pedidos") return ["pedidos.view"];
+
+  // Gestión de empleados / asistencia
+  if (path === "/admin/empleados/asistencia/marcar") return ["asistencia.marcar", "asistencia.administrar"];
+  if (path === "/admin/empleados/asistencia/reportes") return ["asistencia.reportes"];
 
   // Reportes
   if (path === "/admin/reportes/ventas") return ["reportes.ventas"];

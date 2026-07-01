@@ -112,6 +112,20 @@ const privilegios = [
     nombre: "ADM_PERMISOS",
     descripcion: "Control granular de seguridad: asignar y remover privilegios específicos a cada rol definido en el sistema.",
   },
+
+  // ===== ASISTENCIAS (26-28) =====
+  {
+    nombre: "ASI_MARCAR",
+    descripcion: "Permite marcar la asistencia de los empleados activos de la sucursal asignada al usuario.",
+  },
+  {
+    nombre: "ASI_ADMINISTRAR",
+    descripcion: "Permite administrar asistencia y seleccionar cualquier sucursal para registrar asistencia.",
+  },
+  {
+    nombre: "ASI_REPORTES",
+    descripcion: "Permite visualizar reportes de asistencia, horas faltadas y registros semanales por empleado.",
+  },
 ];
 
 async function Privilegios() {

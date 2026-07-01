@@ -18,6 +18,11 @@ async function insertRoles() {
         "Gestor con acceso a funciones relacionadas con la gestión de recursos y proyectos",
     },
     {
+      nombre: "Marcar asistencia",
+      descripcion:
+        "Usuario encargado de marcar asistencia de empleados de su sucursal asignada",
+    },
+    {
       nombre: "User",
       descripcion:
         "Usuario con acceso limitado a funciones básicas del sistema",

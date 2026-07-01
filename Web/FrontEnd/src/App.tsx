@@ -51,6 +51,8 @@ const AdminStockDecrement = lazy(() => import("./pages/admin/AdminStockDecrement
 const Reportsuggestions = lazy(() => import("./pages/report/Reportsuggestions"));
 const ReportVisitas = lazy(() => import("./pages/report/ReportVisitas"));
 const ReporteVentas = lazy(() => import("./pages/report/ReporteVentas"));
+const MarkAttendance = lazy(() => import("./pages/employees/MarkAttendance"));
+const AttendanceReports = lazy(() => import("./pages/employees/AttendanceReports"));
 
 const AdminGuard = lazy(() => import("./components/AdminGuard"));
 const DeliveryHistoryGuard = lazy(() => import("./components/DeliveryHistoryGuard"));
@@ -137,6 +139,9 @@ function App() {
                 />
                 <Route path="reportes/visitas" element={<ReportVisitas />} />
                 <Route path="reportes/ventas" element={<ReporteVentas />} />
+
+                <Route path="empleados/asistencia/marcar" element={<MarkAttendance />} />
+                <Route path="empleados/asistencia/reportes" element={<AttendanceReports />} />
                 
                 {/* Nuevas rutas de inventario dentro de admin */}
                 <Route path="inventory">

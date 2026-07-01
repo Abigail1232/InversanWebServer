@@ -35,6 +35,7 @@ const dashboardRoutes = require("./Routes/dashboard");
 const disenosRoutes = require("./Routes/disenos");
 const visitasRoutes = require("./Routes/visitas");
 const reportesRoutes = require("./Routes/reportes_route");
+const asistenciasRoutes = require("./Routes/asistencias");
 
 if (!process.env.JWT_SECRET) {
   console.error("FATAL: JWT_SECRET no está definido. El servidor no puede iniciar.");
@@ -118,6 +119,7 @@ app.use("/api/disenos", disenosRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/producto-event", visitasRoutes);
 app.use("/api/reportes", reportesRoutes);
+app.use("/api/asistencias", asistenciasRoutes);
 
 if (process.env.NODE_ENV !== "production") {
   const swaggerUi = require("swagger-ui-express");

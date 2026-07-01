@@ -43,7 +43,14 @@ async function insertRolPrivilegio() {
         "PED_PEDIDOS",
         "PED_ENTREGA",
         "PED_HISTORIAL",
+        "ASI_MARCAR",
+        "ASI_ADMINISTRAR",
+        "ASI_REPORTES",
       ],
+    },
+    {
+      rol: "Marcar asistencia",
+      privs: ["DASHBOARD_VIEW", "ASI_MARCAR"],
     },
     {
       rol: "User",

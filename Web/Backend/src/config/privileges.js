@@ -46,6 +46,14 @@ const PRIVILEGIOS = {
   VER_HISTORIAL_INVENTARIO: "INV_HISTORIAL",
 
 
+  // ===== ASISTENCIAS =====
+  /** Marcar asistencia de empleados en la sucursal asignada */
+  MARCAR_ASISTENCIA: "ASI_MARCAR",
+  /** Administrar asistencia de cualquier sucursal */
+  ADMINISTRAR_ASISTENCIA: "ASI_ADMINISTRAR",
+  /** Ver reportes de asistencias */
+  VER_REPORTES_ASISTENCIA: "ASI_REPORTES",
+
   // ===== PEDIDOS =====
   /** Gestionar pedidos: asignar repartidores, cambiar estado */
   GESTIONAR_PEDIDOS: "PED_PEDIDOS",
@@ -83,6 +91,9 @@ const PRIVILEGIOS = {
   ADM_DISENOS: "ADM_DISENOS",
   INV_INGRESO: "INV_INGRESO",
   INV_HISTORIAL: "INV_HISTORIAL",
+  ASI_MARCAR: "ASI_MARCAR",
+  ASI_ADMINISTRAR: "ASI_ADMINISTRAR",
+  ASI_REPORTES: "ASI_REPORTES",
   PED_PEDIDOS: "PED_PEDIDOS",
   PED_ENTREGA: "PED_ENTREGA",
   PED_HISTORIAL: "PED_HISTORIAL",
@@ -106,6 +117,13 @@ const PRIVILEGE_GROUPS = {
 
   // Cualquier privilegio de inventario
   INVENTARIO: [PRIVILEGIOS.INV_INGRESO, PRIVILEGIOS.INV_HISTORIAL],
+
+  // Cualquier privilegio de asistencias
+  ASISTENCIAS: [
+    PRIVILEGIOS.ASI_MARCAR,
+    PRIVILEGIOS.ASI_ADMINISTRAR,
+    PRIVILEGIOS.ASI_REPORTES,
+  ],
 
   // Cualquier privilegio de pedidos
   PEDIDOS_GESTION: [

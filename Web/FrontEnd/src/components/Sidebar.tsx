@@ -10,6 +10,7 @@ import {
   LogoutOutlined,
   MenuFoldOutlined,
   SettingOutlined,
+  TeamOutlined,
   UpOutlined,
   UserAddOutlined,
   UserOutlined,
@@ -145,6 +146,30 @@ export default function SidebarDrawer({
           key: "users",
           icon: <UserAddOutlined />,
           label: "Usuarios",
+          children,
+        });
+      }
+    }
+
+    if (
+      hasPermission("asistencia.marcar") ||
+      hasPermission("asistencia.administrar") ||
+      hasPermission("asistencia.reportes")
+    ) {
+      const children = [
+        hasPermission("asistencia.marcar") || hasPermission("asistencia.administrar")
+          ? { key: "/admin/empleados/asistencia/marcar", label: "Marcar asistencia" }
+          : null,
+        hasPermission("asistencia.reportes")
+          ? { key: "/admin/empleados/asistencia/reportes", label: "Reportes de asistencias" }
+          : null,
+      ].filter(Boolean) as Array<{ key: string; label: string }>;
+
+      if (children.length > 0) {
+        items.push({
+          key: "empleados",
+          icon: <TeamOutlined />,
+          label: "Gestión de Empleados",
           children,
         });
       }
