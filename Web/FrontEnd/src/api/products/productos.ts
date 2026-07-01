@@ -123,7 +123,6 @@ export async function getProductoById(
 
     const ahora = new Date();
 
-    console.log(data);
     const promocionesActivas = (data.promociones ?? []).filter(
       (p: ProductPromotion) =>
         p.descuento > 0 &&

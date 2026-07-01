@@ -119,8 +119,11 @@ class AuthService {
       include: { rol: true } // Incluimos el rol para verificar si está activo también
     });
 
+    // Mensaje genérico para evitar user enumeration (mismo error para usuario no encontrado o clave incorrecta)
+    const INVALID_CREDENTIALS_MSG = "Usuario o contraseña incorrectos.";
+
     if (!Usuariof) {
-      throw { status: 401, message: "Usuario no encontrado!" };
+      throw { status: 401, message: INVALID_CREDENTIALS_MSG };
     }
 
     // Verificar si el usuario está activo
@@ -135,7 +138,7 @@ class AuthService {
 
     const verificar_contra = await bcrypt.compare(clave, Usuariof.clave);
     if (!verificar_contra) {
-      throw { status: 401, message: "Contraseña incorrecta!" };
+      throw { status: 401, message: INVALID_CREDENTIALS_MSG };
     }
 
     const payload = {

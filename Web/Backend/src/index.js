@@ -120,15 +120,18 @@ const swaggerOptions = {
     },
     servers: [
       {
-        url: "http://localhost:3000",
+        url: process.env.API_URL || "http://localhost:3000",
       },
     ],
   },
   apis: ["./routes/*.js"],
 };
 
-const swaggerDocs = swaggerJsdoc(swaggerOptions);
-app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocs));
+// Documentación Swagger — solo disponible fuera de producción
+if (process.env.NODE_ENV !== "production") {
+  const swaggerDocs = swaggerJsdoc(swaggerOptions);
+  app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocs));
+}
 
 // Manejador global de errores
 const globalErrorHandler = require("./middleware/errorHandler");
