@@ -23,5 +23,10 @@ export function buildAssetUrl(value?: string | null, folder: "assets" | "public"
     return `${apiBase}/${normalizedValue}`;
   }
 
-  return `${apiBase}/${folder}/${encodeURIComponent(normalizedValue)}`;
+  const safePath = normalizedValue
+    .split("/")
+    .map((part) => encodeURIComponent(part))
+    .join("/");
+
+  return `${apiBase}/${folder}/${safePath}`;
 }

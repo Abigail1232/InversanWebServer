@@ -15,12 +15,6 @@ import {
 import { DataTable, type DataTableColumn } from "../../components/DataTable";
 import { getUsers } from "../../api/user/user";
 import { FilterBar } from "../../components/FilterBar";
-import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from "react-leaflet";
-import * as L from "leaflet";
-import "leaflet/dist/leaflet.css";
-import markerIconUrl from "leaflet/dist/images/marker-icon.png?url";
-import markerIconRetinaUrl from "leaflet/dist/images/marker-icon-2x.png?url";
-import markerShadowUrl from "leaflet/dist/images/marker-shadow.png?url";
 
 type BranchStatus = "Inactivo" | "Activo";
 const BRANCH_CHANGED_EVENT = "branchChanged";
@@ -61,23 +55,15 @@ type LatLng = { lat: number; lng: number };
 type City = { city: string, state: string };
 
 // ================================
-// Mapa de ubicación
+// Mapa de ubicación estable
+// Usa iframe de OpenStreetMap para evitar fallos de dependencias en producción.
 // ================================
-const defaultMarkerIcon = new L.Icon({
-  iconUrl: markerIconUrl,
-  iconRetinaUrl: markerIconRetinaUrl,
-  shadowUrl: markerShadowUrl,
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-});
-
 function MapPickerLazy({
   value,
   onChange,
   onAddressChange,
   onCityChange,
   country = "Honduras",
-  bounds = HONDURAS_BOUNDS,
 }: {
   value: LatLng;
   onChange: (v: LatLng) => void;
@@ -89,6 +75,27 @@ function MapPickerLazy({
 }) {
   const [manualQuery, setManualQuery] = useState("");
   const [searchLoading, setSearchLoading] = useState(false);
+  const [locationLoading, setLocationLoading] = useState(false);
+
+  const mapSrc = useMemo(() => {
+    const lat = Number(value.lat) || SANTA_ROSA_COPAN.lat;
+    const lng = Number(value.lng) || SANTA_ROSA_COPAN.lng;
+    const delta = 0.012;
+
+    const left = lng - delta;
+    const right = lng + delta;
+    const bottom = lat - delta;
+    const top = lat + delta;
+
+    return `https://www.openstreetmap.org/export/embed.html?bbox=${left},${bottom},${right},${top}&layer=mapnik&marker=${lat},${lng}`;
+  }, [value.lat, value.lng]);
+
+  const openMapUrl = useMemo(() => {
+    const lat = Number(value.lat) || SANTA_ROSA_COPAN.lat;
+    const lng = Number(value.lng) || SANTA_ROSA_COPAN.lng;
+
+    return `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=16/${lat}/${lng}`;
+  }, [value.lat, value.lng]);
 
   const reverseGeocode = async (p: LatLng) => {
     try {
@@ -110,6 +117,20 @@ function MapPickerLazy({
     }
   };
 
+  const setPoint = (lat: number, lng: number, shouldReverse = false) => {
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      message.warning("Coordenadas inválidas.");
+      return;
+    }
+
+    const p = { lat, lng };
+    onChange(p);
+
+    if (shouldReverse) {
+      reverseGeocode(p);
+    }
+  };
+
   const geocodeManual = async () => {
     const q = manualQuery.trim();
     if (!q) return;
@@ -119,7 +140,7 @@ function MapPickerLazy({
 
       const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(
         `${q}, ${country}`
-      )}&limit=1`;
+      )}&limit=1&addressdetails=1`;
 
       const res = await fetch(url, { headers: { "Accept-Language": "es" } });
       const data = await res.json();
@@ -130,6 +151,10 @@ function MapPickerLazy({
 
         const display = data[0]?.display_name;
         if (display) onAddressChange(display);
+
+        const city = data[0]?.address?.city || data[0]?.address?.town || data[0]?.address?.village || "";
+        const state = data[0]?.address?.state || "";
+        if (onCityChange) onCityChange({ city, state });
       } else {
         message.warning("No se encontró la dirección. Prueba con más detalle.");
       }
@@ -141,43 +166,37 @@ function MapPickerLazy({
     }
   };
 
-  function ClickHandler() {
-    useMapEvents({
-      click(e) {
-        const p = { lat: e.latlng.lat, lng: e.latlng.lng };
+  const useCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      message.warning("Tu navegador no permite obtener ubicación.");
+      return;
+    }
+
+    setLocationLoading(true);
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const p = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        };
+
         onChange(p);
         reverseGeocode(p);
+        setLocationLoading(false);
       },
-    });
-    return null;
-  }
-
-  function RecenterMap({ position }: { position: LatLng }) {
-    const map = useMap();
-
-    useEffect(() => {
-      map.setView([position.lat, position.lng], 16, { animate: false });
-    }, [map, position.lat, position.lng]);
-
-    return null;
-  }
-
-  function InvalidateMapSize() {
-    const map = useMap();
-
-    useEffect(() => {
-      const timers = [
-        window.setTimeout(() => map.invalidateSize(), 100),
-        window.setTimeout(() => map.invalidateSize(), 350),
-      ];
-
-      return () => {
-        timers.forEach((timer) => window.clearTimeout(timer));
-      };
-    }, [map]);
-
-    return null;
-  }
+      (error) => {
+        console.warn("No se pudo obtener ubicación actual:", error);
+        message.warning("No se pudo obtener tu ubicación actual.");
+        setLocationLoading(false);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 30000,
+      }
+    );
+  };
 
   return (
     <div className="w-full h-full flex flex-col gap-2">
@@ -186,7 +205,7 @@ function MapPickerLazy({
           value={manualQuery}
           onPressEnter={geocodeManual}
           onChange={(e) => setManualQuery(e.target.value)}
-          placeholder="Buscar dirección manual (opcional)…"
+          placeholder="Buscar dirección manual…"
           className="flex-1"
         />
         <Button
@@ -199,38 +218,52 @@ function MapPickerLazy({
         </Button>
       </div>
 
-      <div className="w-full flex-1 min-h-[240px] rounded-xl overflow-hidden border border-slate-200">
-        <MapContainer
-          center={[value.lat, value.lng]}
-          zoom={16}
-          style={{ width: "100%", height: "100%" }}
-          scrollWheelZoom={false}
-          zoomControl={true}
-          maxBounds={bounds}
-          maxBoundsViscosity={1.0}
-          minZoom={7}
-          maxZoom={19}
-        >
-          <InvalidateMapSize />
-          <RecenterMap position={value} />
-
-          <TileLayer
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            attribution="&copy; OpenStreetMap contributors"
-          />
-
-          <ClickHandler />
-          <Marker position={[value.lat, value.lng]} icon={defaultMarkerIcon} />
-        </MapContainer>
+      <div className="grid grid-cols-2 gap-2">
+        <Input
+          value={Number(value.lat || 0).toFixed(6)}
+          onChange={(e) => setPoint(Number(e.target.value), value.lng)}
+          placeholder="Latitud"
+        />
+        <Input
+          value={Number(value.lng || 0).toFixed(6)}
+          onChange={(e) => setPoint(value.lat, Number(e.target.value))}
+          placeholder="Longitud"
+        />
       </div>
 
-      <div className="text-xs text-slate-500">
-        Tip: click en el mapa para mover el pin. También puedes buscar una dirección manualmente.
+      <div className="w-full flex-1 min-h-[240px] rounded-xl overflow-hidden border border-slate-200 bg-slate-50">
+        <iframe
+          title="Mapa de ubicación"
+          src={mapSrc}
+          className="w-full h-full min-h-[240px] border-0"
+          loading="lazy"
+          referrerPolicy="no-referrer-when-downgrade"
+        />
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+        <span>
+          Busca una dirección o ajusta latitud/longitud. El marcador se actualiza automáticamente.
+        </span>
+
+        <div className="flex gap-2">
+          <Button size="small" onClick={useCurrentLocation} loading={locationLoading}>
+            Usar mi ubicación
+          </Button>
+
+          <a
+            href={openMapUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="text-[#027EB1] underline"
+          >
+            Abrir mapa grande
+          </a>
+        </div>
       </div>
     </div>
   );
 }
-
 
 // ================================
 // Página

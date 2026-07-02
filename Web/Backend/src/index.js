@@ -75,8 +75,10 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
-app.use("/public", express.static(path.join(process.cwd(), "assets")));
-app.use("/assets", express.static(path.join(process.cwd(), "assets")));
+const assetsDir = path.join(process.cwd(), "assets");
+app.use("/public", express.static(assetsDir, { maxAge: "1h", etag: true }));
+app.use("/assets", express.static(assetsDir, { maxAge: "1h", etag: true }));
+
 
 // Rutas del API
 app.use("/api/departments", departmentsRoutes);
@@ -101,7 +103,6 @@ app.use("/api/models", modelRoutes);
 app.use("/api/marcas", marcaRoutes);
 app.use("/api/disenos", disenosRoutes);
 app.use("/api/dashboard", dashboardRoutes);
-app.use("/assets", express.static(path.join(process.cwd(), "assets")));
 app.use("/api/producto-event", visitasRoutes);
 app.use("/api/reportes", reportesRoutes);
 app.use("/api/asistencias", asistenciasRoutes);
