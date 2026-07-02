@@ -15,6 +15,9 @@ import {
 import { DataTable, type DataTableColumn } from "../../components/DataTable";
 import { getUsers } from "../../api/user/user";
 import { FilterBar } from "../../components/FilterBar";
+import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from "react-leaflet";
+import * as L from "leaflet";
+import "leaflet/dist/leaflet.css";
 import markerIconUrl from "leaflet/dist/images/marker-icon.png?url";
 import markerIconRetinaUrl from "leaflet/dist/images/marker-icon-2x.png?url";
 import markerShadowUrl from "leaflet/dist/images/marker-shadow.png?url";
@@ -58,8 +61,16 @@ type LatLng = { lat: number; lng: number };
 type City = { city: string, state: string };
 
 // ================================
-// Mapa Lazy (NO carga al inicio, solo al abrir modal)
+// Mapa de ubicación
 // ================================
+const defaultMarkerIcon = new L.Icon({
+  iconUrl: markerIconUrl,
+  iconRetinaUrl: markerIconRetinaUrl,
+  shadowUrl: markerShadowUrl,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+});
+
 function MapPickerLazy({
   value,
   onChange,
@@ -76,77 +87,29 @@ function MapPickerLazy({
   country?: string;
   bounds?: [[number, number], [number, number]];
 }) {
-  const [ready, setReady] = useState(false);
-
-  // módulos cargados dinámicamente
-  const [RL, setRL] = useState<any>(null);
-  const [L, setL] = useState<any>(null);
-
-  // input manual (opcional) para buscar
   const [manualQuery, setManualQuery] = useState("");
   const [searchLoading, setSearchLoading] = useState(false);
 
-  // para saber si la dirección fue autogenerada por click
-  const lastAutoAddressRef = useRef<string>("");
-
-  useEffect(() => {
-    let mounted = true;
-
-    (async () => {
-      try {
-        const RLmod = await import("react-leaflet");
-        const Lmod = await import("leaflet");
-        if (!mounted) return;
-
-        setRL(RLmod);
-        setL(Lmod);
-
-        // Fix iconos (Vite + Leaflet)
-        const icon = new Lmod.Icon({
-          iconUrl: markerIconUrl,
-          iconRetinaUrl: markerIconRetinaUrl,
-          shadowUrl: markerShadowUrl,
-          iconSize: [25, 41],
-          iconAnchor: [12, 41],
-        });
-        (Lmod as any).__INVERSAN_ICON__ = icon;
-
-        setReady(true);
-      } catch (e) {
-        message.error("No se pudo cargar el mapa. Revisa tu instalación de leaflet/react-leaflet.");
-      }
-    })();
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  // Reverse geocode: click -> dirección
   const reverseGeocode = async (p: LatLng) => {
     try {
       const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${p.lat}&lon=${p.lng}`;
       const res = await fetch(url, { headers: { "Accept-Language": "es" } });
       const data = await res.json();
+
       const display = data?.display_name;
       if (display) {
-        lastAutoAddressRef.current = display;
         onAddressChange(display);
       }
 
-      const city = data?.address?.city || data?.address?.town || data?.address?.village;
-      const state = data?.address?.state;
+      const city = data?.address?.city || data?.address?.town || data?.address?.village || "";
+      const state = data?.address?.state || "";
 
-      if (onCityChange) onCityChange({ city, state }); // ✅ avisar al padre
-
-      // console.log("Ciudad detectada:", city);
-      // console.log("Estado detectado:", state);
-    } catch {
-      // ignore
+      if (onCityChange) onCityChange({ city, state });
+    } catch (error) {
+      console.warn("No se pudo obtener la dirección del punto seleccionado:", error);
     }
   };
 
-  // Geocode: solo si usuario escribió manualmente
   const geocodeManual = async () => {
     const q = manualQuery.trim();
     if (!q) return;
@@ -157,6 +120,7 @@ function MapPickerLazy({
       const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(
         `${q}, ${country}`
       )}&limit=1`;
+
       const res = await fetch(url, { headers: { "Accept-Language": "es" } });
       const data = await res.json();
 
@@ -164,59 +128,56 @@ function MapPickerLazy({
         const p = { lat: Number(data[0].lat), lng: Number(data[0].lon) };
         onChange(p);
 
-        // si buscó manual, actualizamos también dirección del form
         const display = data[0]?.display_name;
         if (display) onAddressChange(display);
       } else {
         message.warning("No se encontró la dirección. Prueba con más detalle.");
       }
-    } catch {
-      message.error("No se pudo buscar la dirección (verifica tu internet).");
+    } catch (error) {
+      console.error("No se pudo buscar la dirección:", error);
+      message.error("No se pudo buscar la dirección. Verifica tu conexión.");
     } finally {
       setSearchLoading(false);
     }
   };
 
-  if (!ready || !RL || !L) {
-    return (
-      <div className="w-full h-full min-h-[240px] rounded-xl border border-slate-200 flex items-center justify-center bg-slate-50">
-        <div className="flex flex-col items-center gap-2">
-          <Spin />
-          <div className="text-xs text-slate-500">Cargando mapa…</div>
-        </div>
-      </div>
-    );
-  }
-
-  const { MapContainer, TileLayer, Marker, useMapEvents, useMap } = RL;
-
   function ClickHandler() {
     useMapEvents({
-      click(e: any) {
+      click(e) {
         const p = { lat: e.latlng.lat, lng: e.latlng.lng };
         onChange(p);
-        reverseGeocode(p); // ✅ actualiza dirección a la izquierda
+        reverseGeocode(p);
       },
     });
     return null;
   }
 
-  // ✅ Leaflet no re-centra solo con props, así que lo forzamos
   function RecenterMap({ position }: { position: LatLng }) {
     const map = useMap();
+
     useEffect(() => {
       map.setView([position.lat, position.lng], 16, { animate: false });
-    }, [position.lat, position.lng]);
+    }, [map, position.lat, position.lng]);
+
     return null;
   }
 
-  // Sugerencia: cuando la dirección se autogenera por click,
-  // NO queremos que “Buscar” cambie el punto si el usuario no editó nada.
-  // Por eso el input manual va separado.
-  // Si querés, podés precargar el manualQuery con address, pero eso causa justo el bug que dijiste.
-  // Aquí queda correcto: manualQuery solo cambia si usuario escribe.
+  function InvalidateMapSize() {
+    const map = useMap();
 
-  const icon = (L as any).__INVERSAN_ICON__;
+    useEffect(() => {
+      const timers = [
+        window.setTimeout(() => map.invalidateSize(), 100),
+        window.setTimeout(() => map.invalidateSize(), 350),
+      ];
+
+      return () => {
+        timers.forEach((timer) => window.clearTimeout(timer));
+      };
+    }, [map]);
+
+    return null;
+  }
 
   return (
     <div className="w-full h-full flex flex-col gap-2">
@@ -250,25 +211,26 @@ function MapPickerLazy({
           minZoom={7}
           maxZoom={19}
         >
+          <InvalidateMapSize />
           <RecenterMap position={value} />
 
           <TileLayer
-            // OSM estándar (ligero). Si querés aún más ligero, podemos usar un tile proveedor “light”,
-            // pero esto ya va bien y el gran ahorro está en el lazy-load.
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             attribution="&copy; OpenStreetMap contributors"
           />
 
           <ClickHandler />
-          <Marker position={[value.lat, value.lng]} icon={icon} />
+          <Marker position={[value.lat, value.lng]} icon={defaultMarkerIcon} />
         </MapContainer>
       </div>
+
       <div className="text-xs text-slate-500">
-        Tip: click en el mapa para mover el pin (actualiza dirección). “Buscar” es solo si escribiste manualmente.
+        Tip: click en el mapa para mover el pin. También puedes buscar una dirección manualmente.
       </div>
     </div>
   );
 }
+
 
 // ================================
 // Página
