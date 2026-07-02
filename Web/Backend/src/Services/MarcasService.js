@@ -67,14 +67,10 @@ class MarcasService {
   }
 
   async obtenerMarcasFiltro() {
+    // Mostrar marcas activas aunque todavía no tengan productos.
+    // Antes se filtraban solo marcas con productos activos, por eso en el home salía vacío.
     const marcas = await prisma.marca.findMany({
-      where: {
-        producto: {
-          some: {
-            estado: true
-          }
-        }
-      },
+      where: { activo: true },
       orderBy: { nombre: "asc" },
     });
 

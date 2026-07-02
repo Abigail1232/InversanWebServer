@@ -16,6 +16,6 @@ RUN npx prisma generate
 
 EXPOSE 3000
 
-# Comando para iniciar la app en modo PRUEBAS (Se borra y recrea la DB cada vez)
-CMD sh -c "npm run prisma:reset && npm run prisma:seed && npm start"
+# Comando de producción: aplica migraciones pendientes y levanta la app
+CMD sh -c "npx prisma migrate deploy && npm start"
 
