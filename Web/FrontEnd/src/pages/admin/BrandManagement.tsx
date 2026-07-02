@@ -20,6 +20,7 @@ import {
   getProductosPorMarca,
 } from "../../api/products/marcas";
 import BrandModal from "../../components/modal/BrandModal";
+import { buildAssetUrl } from "../../utils/assetUrl";
 
 interface Brand {
   id: number;
@@ -341,20 +342,7 @@ export default function BrandManagement() {
   const [selectedBrandView, setSelectedBrandView] = useState<Brand | null>(
     null
   );
-
-  const API_BASE =
-    (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, "") ||
-    "http://localhost:3000";
-
-  const buildAssetUrl = (value?: string | null) => {
-    if (!value) return "";
-    if (value.startsWith("http://") || value.startsWith("https://")) {
-      return value;
-    }
-    return `${API_BASE}/assets/${encodeURIComponent(value)}`;
-  };
-
-  const loadBrands = async () => {
+const loadBrands = async () => {
     try {
       const data = await getMarcas();
 

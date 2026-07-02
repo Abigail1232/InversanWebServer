@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { Modal, Input } from 'antd';
 import { SearchOutlined, CloseOutlined } from '@ant-design/icons';
 import { getBrands, type BrandItem } from '../../api/products/brands';
+import { buildAssetUrl } from "../../utils/assetUrl";
 
 interface ProductBrandFilterModalProps {
     isOpen: boolean;
@@ -103,9 +104,7 @@ export default function ProductBrandFilterModal({ isOpen, onClose, onComplete }:
                         ) : filteredBrands.length > 0 ? (
                             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 md:gap-4">
                                 {filteredBrands.map((item) => {
-                                    const imageUrl = item.imageUrl
-                                        ? `${import.meta.env.VITE_API_URL}/public/${item.imageUrl}`
-                                        : null;
+                                    const imageUrl = item.imageUrl ? buildAssetUrl(item.imageUrl) : null;
 
                                     return (
                                         <button

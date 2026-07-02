@@ -55,6 +55,8 @@ services:
       - "3003:3000"
     env_file:
       - .env
+    volumes:
+      - backend_assets:/app/assets
     depends_on:
       db:
         condition: service_healthy
@@ -81,6 +83,7 @@ services:
 volumes:
   db_data:
   redis_data:
+  backend_assets:
 
 networks:
   inversan_net:

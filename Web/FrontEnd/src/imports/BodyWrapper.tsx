@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { getBrands } from "../api/products/brands";
 import { getCategorias, type Categoria } from "../api/products/categorias";
 import CategorySelectorPanel from "../components/CategorySelectorPanel";
+import { buildAssetUrl } from "../utils/assetUrl";
 
 function Container1() {
   const navigate = useNavigate();
@@ -84,12 +85,11 @@ function Container3() {
       try {
         const brandData = await getBrands();
         if (brandData.length > 0) {
-          const baseUrl = import.meta.env.VITE_API_URL || "";
           setBrands(
             brandData.map((brand) => ({
               id: brand.id,
               name: brand.name,
-              image: brand.imageUrl ? `${baseUrl}/public/${brand.imageUrl}` : "",
+              image: buildAssetUrl(brand.imageUrl),
             }))
           );
           return;
