@@ -50,6 +50,8 @@ services:
       context: ./Web/Backend/
       dockerfile: Dockerfile
     container_name: inversan_backend
+    volumes:
+      - backend_assets:/app/assets
     restart: unless-stopped
     ports:
       - "3003:3000"
@@ -81,6 +83,7 @@ services:
 volumes:
   db_data:
   redis_data:
+  backend_assets:
 
 networks:
   inversan_net:
