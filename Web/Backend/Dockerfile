@@ -1,3 +1,4 @@
+
 FROM node:22-alpine
 
 RUN apk add --no-cache openssl
@@ -16,6 +17,5 @@ RUN npx prisma generate
 
 EXPOSE 3000
 
-# Comando de producción: aplica migraciones pendientes y levanta la app
+# Comando para iniciar la app en modo PRUEBAS (Se borra y recrea la DB cada vez
 CMD sh -c "npx prisma migrate deploy && npm start"
-

@@ -233,7 +233,7 @@ export async function cambiarEstadoProducto(id: number, activo: boolean) {
 
 export async function getCategorias() {
   try {
-    const response = await api.get("/api/products/categorias");
+    const response = await api.get("/api/products/categorias-admin");
     return response.data;
   } catch (error) {
     console.error("Error obteniendo categorías:", error);

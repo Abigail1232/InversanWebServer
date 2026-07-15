@@ -25,6 +25,11 @@ export async function getCategorias(): Promise<Categoria[]> {
   return res.data.data;
 }
 
+export async function getCategoriasAdmin(): Promise<Categoria[]> {
+  const res = await api.get("/api/products/categorias-admin");
+  return res.data.data;
+}
+
 export async function crearCategoria(
   payload: CrearCategoria
 ): Promise<Categoria> {

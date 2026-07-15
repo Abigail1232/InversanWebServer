@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Button, Input, Select, Modal, Form, message, Spin, Switch, ConfigProvider } from "antd";
+import { useEffect, useMemo, useState } from "react";
+import { Button, Input, Select, Modal, Form, message, Switch, ConfigProvider } from "antd";
 import {
   SearchOutlined,
   PlusOutlined,
@@ -24,10 +24,7 @@ const BRANCH_STORAGE_KEY = "selectedBranch";
 const SANTA_ROSA_COPAN = { lat: 14.7667, lng: -88.7833 };
 
 
-const HONDURAS_BOUNDS: [[number, number], [number, number]] = [
-  [12.98, -89.35], // SW aprox
-  [16.52, -83.15], // NE aprox
-];
+
 
 const STATUS_OPTIONS: BranchStatus[] = ["Activo", "Inactivo"];
 

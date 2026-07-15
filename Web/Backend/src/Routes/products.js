@@ -62,6 +62,14 @@ router.put(
 );
 
 // ===== GESTIÓN DE CATEGORÍAS — requiere ADM_CATEGORIAS =====
+router.get(
+  "/categorias-admin",
+  verificarToken,
+  verificarPrivilegios(PRIVILEGIOS.ADM_CATEGORIAS),
+  productosController.obtenerCategoriasAdmin
+);
+
+
 router.post(
   "/crear_categoria",
   verificarToken,

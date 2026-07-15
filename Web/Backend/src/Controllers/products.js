@@ -70,6 +70,11 @@ const obtenerCategorias = asyncHandler(async (req, res, next) => {
   res.status(200).json({ success: true, data: categorias, total: categorias.length });
 });
 
+const obtenerCategoriasAdmin = asyncHandler(async (req, res, next) => {
+  const categorias = await categoriasService.obtenerCategoriasAdmin();
+  res.status(200).json({ success: true, data: categorias, total: categorias.length });
+});
+
 const obtenerMarcas = asyncHandler(async (req, res, next) => {
   const data = await marcasService.obtenerMarcasFiltro();
   res.status(200).json({ success: true, data, total: data.length });
@@ -188,6 +193,7 @@ module.exports = {
   buscarProductos,
   obtenerDetallePromocionProductos,
   obtenerCategorias,
+  obtenerCategoriasAdmin,
   obtenerMarcas,
   obtenerProductosPorMarca,
   obtenerProductos,

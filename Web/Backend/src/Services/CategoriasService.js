@@ -17,6 +17,21 @@ class CategoriasService {
     return categorias;
   }
 
+
+  async obtenerCategoriasAdmin() {
+    const categorias = await prisma.categoria.findMany({
+      select: {
+        id_categoria: true,
+        nombre: true,
+        imagen_url: true,
+        activo: true,
+      },
+      orderBy: { nombre: "asc" },
+    });
+
+    return categorias;
+  }
+
   async obtenerCategoriasFiltro() {
     const categorias = await prisma.categoria.findMany({
       where: {

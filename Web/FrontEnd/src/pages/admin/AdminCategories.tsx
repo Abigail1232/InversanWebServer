@@ -10,7 +10,7 @@ import { Card, CardContent } from "../../components/ui/card";
 import { DataTable, type DataTableColumn } from "../../components/DataTable";
 import DeactivateModal from "../../components/modal/DeactivateModal";
 
-import {getCategorias,crearCategoria,modificarCategoria,eliminarCategoria,type Categoria} from "../../api/products/categorias";
+import {getCategoriasAdmin,crearCategoria,modificarCategoria,eliminarCategoria,type Categoria} from "../../api/products/categorias";
 
 const PAGE_SIZE = 10;
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
@@ -96,7 +96,7 @@ export default function AdminCategories(): React.JSX.Element {
   const fetchCategorias = async () => {
     try {
       setLoading(true);
-      const response = await getCategorias();
+      const response = await getCategoriasAdmin();
       setCategorias(response);
     } catch (error) {
       console.error("Error al obtener categorías:", error);
