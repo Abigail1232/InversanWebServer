@@ -36,11 +36,6 @@ class CategoriasService {
     const categorias = await prisma.categoria.findMany({
       where: {
         activo: true,
-        producto: {
-          some: {
-            estado: true
-          }
-        }
       },
       select: {
         id_categoria: true,
@@ -50,6 +45,7 @@ class CategoriasService {
       },
       orderBy: { nombre: "asc" },
     });
+
     return categorias;
   }
 
