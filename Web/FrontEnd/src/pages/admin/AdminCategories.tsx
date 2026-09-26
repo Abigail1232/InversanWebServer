@@ -9,6 +9,7 @@ import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 import { DataTable, type DataTableColumn } from "../../components/DataTable";
 import DeactivateModal from "../../components/modal/DeactivateModal";
+import { buildAssetUrl, normalizeApiAssetUrl } from "../../config/api";
 
 import {getCategoriasAdmin,crearCategoria,modificarCategoria,eliminarCategoria,type Categoria} from "../../api/products/categorias";
 
@@ -16,36 +17,9 @@ const PAGE_SIZE = 10;
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = ["image/png","image/jpg","image/jpeg","image/svg+xml"];
 
-const rawApiUrl = import.meta.env.VITE_API_URL || "http://localhost:3000";
-const API_URL = rawApiUrl.replace(/\/$/, "");
-
-function buildImageUrl(src: string | null): string | null {
-  if (!src || src.trim() === "") return null;
-
-  const cleanSrc = src.trim();
-
-  if (cleanSrc.startsWith("http://") || cleanSrc.startsWith("https://")) {
-    return cleanSrc;
-  }
-
-  if (cleanSrc.startsWith("/public/")) {
-    return `${API_URL}${cleanSrc}`;
-  }
-
-  if (cleanSrc.startsWith("public/")) {
-    return `${API_URL}/${cleanSrc}`;
-  }
-
-  if (cleanSrc.startsWith("/")) {
-    return `${API_URL}${cleanSrc}`;
-  }
-
-  return `${API_URL}/public/${cleanSrc}`;
-}
-
 function CategoryImage({src,alt,}: {src: string | null;alt: string;}): React.JSX.Element {
   const [imageError, setImageError] = useState(false);
-  const finalSrc = buildImageUrl(src);
+  const finalSrc = normalizeApiAssetUrl(src, "public");
 
   useEffect(() => {setImageError(false);}, [src]);
 
@@ -386,7 +360,7 @@ export default function AdminCategories(): React.JSX.Element {
     setEditCategoryName(categoria.nombre);
     setEditCategoryActive(categoria.activo);
     setEditCategoryFile(null);
-    setEditCategoryPreview(buildImageUrl(categoria.imagen_url));
+    setEditCategoryPreview(normalizeApiAssetUrl(categoria.imagen_url, "public"));
     setIsEditModalOpen(true);
   };
 

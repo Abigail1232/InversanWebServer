@@ -1,9 +1,12 @@
-# No mandar secretos al build context
+# Variables de entorno
 .env
-example.env
+.env.*
+!.env.example
 
 # Basura común
-.git
+node_modules/
+.git/
 .gitignore
-node_modules
+.DS_Store
+*.log
 

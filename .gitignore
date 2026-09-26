@@ -1,0 +1,66 @@
+# ============================================
+# VARIABLES DE ENTORNO / SECRETOS
+# ============================================
+.env
+.env.*
+!.env.example
+!**/.env.example
+
+# ============================================
+# NODE
+# ============================================
+**/node_modules/
+**/dist/
+**/dist-ssr/
+**/.vite/
+**/coverage/
+**/.cache/
+
+# ============================================
+# LOGS
+# ============================================
+*.log
+**/logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+Web/FrontEnd/build_log*.txt
+
+# ============================================
+# SISTEMA OPERATIVO / EDITORES
+# ============================================
+**/.DS_Store
+Thumbs.db
+ehthumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# ============================================
+# BACKUPS LOCALES
+# ============================================
+backup_*.sql
+*.sql.bak
+*.dump
+*.bak
+*.tmp
+*.pid
+
+# ============================================
+# ARCHIVOS SOLO LOCALES
+# ============================================
+.local/
+**/.local/
+
+# ============================================
+# ARCHIVOS TEMPORALES DEL BACKEND
+# ============================================
+Web/Backend/assets/tmp/
+
+# Los uploads existentes siguen versionados; solo se ignoran los nuevos.
+Web/Backend/assets/[0-9]*-*.jpg
+Web/Backend/assets/[0-9]*-*.jpeg
+Web/Backend/assets/[0-9]*-*.png
+Web/Backend/assets/[0-9]*-*.gif
+Web/Backend/assets/[0-9]*-*.webp

@@ -9,6 +9,7 @@ import {
 } from "../../api/promotions/promotion";
 import type { RelatedProduct } from "../../types/product";
 import RelatedProductCard from "../../components/product/RelatedProductCard";
+import { API_BASE_URL } from "../../config/api";
 
 export default function PromocionesPage() {
   const navigate = useNavigate();
@@ -90,7 +91,7 @@ export default function PromocionesPage() {
 
           {promo?.banner_url && (
             <img
-              src={`${import.meta.env.VITE_API_URL}/public/${promo.banner_url}`}
+              src={`${API_BASE_URL}/public/${promo.banner_url}`}
               alt="Banner Promocional"
               className="absolute inset-0 w-full h-full object-cover"
             />

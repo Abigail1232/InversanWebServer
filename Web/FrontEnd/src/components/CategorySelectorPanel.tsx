@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { FaBoxOpen } from "react-icons/fa";
 import type { Categoria } from "../api/products/categorias";
+import { API_BASE_URL } from "../config/api";
 
 type CategorySelectorPanelProps = {
   categories: Categoria[];
@@ -121,7 +122,7 @@ export default function CategorySelectorPanel({
                       <div className="w-12 h-12 flex items-center justify-center mb-3 relative">
                         {currentMobileCat.imagen_url ? (
                           <img
-                            src={`${import.meta.env.VITE_API_URL}/public/${
+                            src={`${API_BASE_URL}/public/${
                               currentMobileCat.imagen_url
                             }`}
                             alt={currentMobileCat.nombre}
@@ -209,7 +210,7 @@ export default function CategorySelectorPanel({
                       <div className="h-12 flex items-center justify-center mb-4 relative">
                         {cat.imagen_url ? (
                           <img
-                            src={`${import.meta.env.VITE_API_URL}/public/${
+                            src={`${API_BASE_URL}/public/${
                               cat.imagen_url
                             }`}
                             alt={cat.nombre}

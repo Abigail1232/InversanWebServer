@@ -1,12 +1,15 @@
+name: inversan-local
+
 services:
   db:
     image: mysql:8.0
-    container_name: inversan_db
+    container_name: inversan_local_db
     restart: unless-stopped
-    command: >
-      --default-authentication-plugin=mysql_native_password
-      --character-set-server=utf8mb4
-      --collation-server=utf8mb4_unicode_ci
+    command:
+      - --default-authentication-plugin=mysql_native_password
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --log-bin-trust-function-creators=1
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: ${MYSQL_DATABASE}
@@ -30,7 +33,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: inversan_redis
+    container_name: inversan_local_redis
     restart: unless-stopped
     command: redis-server --appendonly yes
     ports:
@@ -45,30 +48,11 @@ services:
     networks:
       - inversan_net
 
-  frontend:
-    build:
-      context: ./Web/FrontEnd/
-      dockerfile: Dockerfile.dev
-      args:
-        - VITE_API_URL=${VITE_API_URL:-http://localhost:3000}
-    container_name: inversan_frontend
-    ports:
-      - "5000:5173"
-    volumes:
-      - ./Web/FrontEnd:/app
-      - /app/node_modules
-    environment:
-      - CHOKIDAR_USEPOLLING=true
-    depends_on:
-      - backend
-    networks:
-      - inversan_net
-
   backend:
     build:
       context: ./Web/Backend/
-      dockerfile: Dockerfile
-    container_name: inversan_backend
+      dockerfile: Dockerfile.dev
+    container_name: inversan_local_backend
     restart: unless-stopped
     ports:
       - "3000:3000"
@@ -77,9 +61,40 @@ services:
       - /app/node_modules
     env_file:
       - .env
+    environment:
+      DATABASE_URL: mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@db:3306/${MYSQL_DATABASE}
+      NODE_ENV: development
+      PORT: "3000"
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      COOKIE_SECURE: "false"
+      COOKIE_DOMAIN: ""
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5000}
+      CORS_ORIGINS: "${CORS_ORIGINS:-http://localhost:5000,http://127.0.0.1:5000,http://localhost:5173,http://127.0.0.1:5173}"
+    command: sh -c "npx prisma generate && npx prisma migrate deploy && npm run dev"
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - inversan_net
+
+  frontend:
+    build:
+      context: ./Web/FrontEnd/
+      dockerfile: Dockerfile.dev
+    container_name: inversan_local_frontend
+    ports:
+      - "5000:5173"
+    volumes:
+      - ./Web/FrontEnd:/app
+      - /app/node_modules
+    environment:
+      CHOKIDAR_USEPOLLING: "true"
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:3000}
+    depends_on:
+      - backend
     networks:
       - inversan_net
 

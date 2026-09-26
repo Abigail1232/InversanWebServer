@@ -12,6 +12,7 @@ import { useEffect, useState } from "react";
 import { type Promotion, getPromotions } from "../../api/promotions/promotion";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
+import { API_BASE_URL } from "../../config/api";
 
 export default function HomePage() {
   const navigate = useNavigate();
@@ -185,7 +186,7 @@ export default function HomePage() {
             aria-label="Ver promoción actual"
           >
             <img
-              src={`${import.meta.env.VITE_API_URL}/public/${currentPromotion?.banner_url
+              src={`${API_BASE_URL}/public/${currentPromotion?.banner_url
                 }`}
               alt={
                 String(currentPromotion?.id_promocion) || "Banner promocional"

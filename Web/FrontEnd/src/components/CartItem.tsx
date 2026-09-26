@@ -1,4 +1,5 @@
 import { DeleteOutlined, PlusOutlined, MinusOutlined } from "@ant-design/icons";
+import { API_BASE_URL } from "../config/api";
 import type { Product } from "../api/cart/cart";
 
 interface CartItemProps {
@@ -26,7 +27,7 @@ export default function CartItem({
       <div className="w-40 h-40 rounded-xl overflow-hidden bg-gray-100 flex items-center justify-center">
         {item.producto_imagen[0]?.imagen_url ? (
           <img
-            src={`${import.meta.env.VITE_API_URL}/public/${
+            src={`${API_BASE_URL}/public/${
               item.producto_imagen[0].imagen_url
             }`}
             alt={item.nombre}

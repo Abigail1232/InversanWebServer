@@ -1,9 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { API_BASE_URL, normalizeApiAssetUrl } from "../config/api";
 
 const ERROR_IMG_SRC =
   "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODgiIGhlaWdodD0iODgiIHhtbG5zPSJodHRwOi8vd3d3LnczaW5zLm9yZyIgc3Ryb2tlPSIjMDAwIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBvcGFjaXR5PSIuMyIgZmlsbD0ibm9uZSIgc3Ryb2tlLXdpZHRoPSIzLjciPjxyZWN0IHg9IjE2IiB5PSIxNiIgd2lkdGg9IjU2IiBoZWlnaHQ9IjU2IiByeD0iNiIvPjxwYXRoIGQ9Im0xNiA1OCAxNi0xOCAzMiAzMiIvPjxjaXJjbGUgY3g9IjUzIiB5PSIzNSIgcj0iNyIvPjwvc3ZnPgo=";
-
-const FALLBACK_API_BASE = "https://api.grupoinversan.com";
 
 function unique(values: string[]) {
   return Array.from(new Set(values.filter(Boolean)));
@@ -35,17 +34,15 @@ function buildCandidates(src?: string | null) {
 
   if (cleanSrc.startsWith("data:")) return [cleanSrc];
 
-  const apiBase = ((import.meta.env.VITE_API_URL as string | undefined) || FALLBACK_API_BASE)
-    .replace(/\/$/, "");
-
+  const normalizedSrc = normalizeApiAssetUrl(cleanSrc);
   const currentOrigin = typeof window !== "undefined" ? window.location.origin : "";
-  const fileName = getFileName(cleanSrc);
+  const fileName = getFileName(normalizedSrc);
 
-  const candidates = [cleanSrc];
+  const candidates = [normalizedSrc];
 
   if (fileName) {
-    candidates.push(`${apiBase}/assets/${encodeURIComponent(fileName)}`);
-    candidates.push(`${apiBase}/public/${encodeURIComponent(fileName)}`);
+    candidates.push(`${API_BASE_URL}/assets/${encodeURIComponent(fileName)}`);
+    candidates.push(`${API_BASE_URL}/public/${encodeURIComponent(fileName)}`);
 
     if (currentOrigin) {
       candidates.push(`${currentOrigin}/assets/${encodeURIComponent(fileName)}`);

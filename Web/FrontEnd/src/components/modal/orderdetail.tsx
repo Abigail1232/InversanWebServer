@@ -10,6 +10,7 @@ import {
   type PedidoResponse,
   type PedidoDetalle,
 } from "../../api/orders/order-detail";
+import { API_BASE_URL } from "../../config/api";
 const { Title, Text } = Typography;
 
 const fmt = (n: number | string, decimals = 2) =>
@@ -230,7 +231,7 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
               >
                 {item.imagen_url ? (
                   <img
-                    src={`${import.meta.env.VITE_API_URL}/public/${item.imagen_url
+                    src={`${API_BASE_URL}/public/${item.imagen_url
                       }`}
                   />
                 ) : (

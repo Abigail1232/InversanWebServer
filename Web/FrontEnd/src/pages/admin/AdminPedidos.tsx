@@ -39,6 +39,7 @@ import {
   type ProfileUserResponse,
 } from "../../api/profile/profile";
 import { cancelOrderAdmin } from "../../api/orders/cancel-order";
+import { normalizeApiAssetUrl } from "../../config/api";
 
 const { TextArea } = Input;
 
@@ -1187,11 +1188,7 @@ export default function AdminPedidos() {
             <div className="flex flex-col items-center bg-gray-50 rounded-2xl p-4 border border-gray-100">
               {selectedOrder?.comprobante_url ? (
                 <img
-                  src={
-                    selectedOrder.comprobante_url.startsWith("http")
-                      ? selectedOrder.comprobante_url
-                      : `${import.meta.env.VITE_API_URL || "http://localhost:3000"}${selectedOrder.comprobante_url.startsWith("/") ? "" : "/"}${selectedOrder.comprobante_url}`
-                  }
+                  src={normalizeApiAssetUrl(selectedOrder.comprobante_url)}
                   alt="Comprobante de Pago"
                   className="max-w-full max-h-[60vh] rounded-xl shadow-lg object-contain"
                 />

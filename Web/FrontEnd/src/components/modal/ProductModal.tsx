@@ -27,6 +27,7 @@ import { saveModel } from "../../api/admin/models";
 import { crearMarca } from "../../api/products/marcas";
 import { getDisenos, crearDiseno, type Diseno } from "../../api/admin/disenos";
 import BrandModal from "./BrandModal";
+import { buildAssetUrl, normalizeApiAssetUrl } from "../../config/api";
 
 
 interface DesignModalProps {
@@ -2058,9 +2059,7 @@ export default function ProductModal({
                     createElement("model-viewer", {
                       src: localModelPreviewUrl
                       ? localModelPreviewUrl
-                      : formData.imagen3D.startsWith("http")
-                        ? formData.imagen3D
-                        : `${import.meta.env.VITE_API_URL}/public/${formData.imagen3D.replace(/^\/+/, "")}`,
+                      : normalizeApiAssetUrl(formData.imagen3D, "public"),
                       alt: "Modelo 3D del producto",
                       "camera-controls": true,
                       "auto-rotate": true,

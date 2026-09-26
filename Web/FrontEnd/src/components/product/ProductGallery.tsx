@@ -1,6 +1,7 @@
 import { useState, useEffect, createElement } from 'react';
 import { createPortal } from 'react-dom';
 import type { ProductImage } from '../../types/product';
+import { API_BASE_URL, normalizeApiAssetUrl } from '../../config/api';
 
 interface Props {
   images: ProductImage[];
@@ -30,8 +31,8 @@ export default function ProductGallery({ images, model3DUrl }: Props) {
 
       try {
         const fullUrl = model3DUrl.startsWith('http') 
-          ? model3DUrl 
-          : `${import.meta.env.VITE_API_URL}/public/${model3DUrl.replace(/^\/+/, '')}`;
+          ? normalizeApiAssetUrl(model3DUrl)
+          : `${API_BASE_URL}/public/${model3DUrl.replace(/^\/+/, '')}`;
         
         // Hacer una petición HEAD para verificar si el archivo existe
         const response = await fetch(fullUrl, { method: 'HEAD' });
@@ -137,7 +138,7 @@ export default function ProductGallery({ images, model3DUrl }: Props) {
             aria-label="Ampliar imagen"
           >
             <img
-              src={`${import.meta.env.VITE_API_URL}/public/${images[current].url}`}
+              src={`${API_BASE_URL}/public/${images[current].url}`}
               alt={images[current].alt}
               className={`w-full h-full object-cover transition-transform duration-200 ${
                 isMainZoomed ? 'scale-150' : 'scale-100'
@@ -185,7 +186,7 @@ export default function ProductGallery({ images, model3DUrl }: Props) {
                   }`}
                 aria-label={`Ver ${img.alt}`}
               >
-                <img src={`${import.meta.env.VITE_API_URL}/public/${img.url}`} alt={img.alt} className="w-full h-full object-cover" />
+                <img src={`${API_BASE_URL}/public/${img.url}`} alt={img.alt} className="w-full h-full object-cover" />
               </button>
             ))}
           </div>
@@ -250,7 +251,7 @@ export default function ProductGallery({ images, model3DUrl }: Props) {
                 style={{ cursor: isModalZoomed ? 'zoom-in' : 'default' }}
               >
                 <img
-                  src={`${import.meta.env.VITE_API_URL}/public/${images[current].url}`}
+                  src={`${API_BASE_URL}/public/${images[current].url}`}
                   alt={images[current].alt}
                   className={`max-w-full max-h-full object-contain transition-transform duration-200 ${
                     isModalZoomed ? 'scale-150' : 'scale-100'
@@ -301,7 +302,7 @@ export default function ProductGallery({ images, model3DUrl }: Props) {
                     }`}
                   aria-label={`Ver ${img.alt}`}
                 >
-                  <img src={`${import.meta.env.VITE_API_URL}/public/${img.url}`} alt={img.alt} className="w-full h-full object-cover" />
+                  <img src={`${API_BASE_URL}/public/${img.url}`} alt={img.alt} className="w-full h-full object-cover" />
                 </button>
               ))}
             </div>
@@ -346,7 +347,7 @@ export default function ProductGallery({ images, model3DUrl }: Props) {
                 {model3DUrl ? (
                   modelViewerReady ? (
                     createElement('model-viewer', {
-                      src: model3DUrl.startsWith('http') ? model3DUrl : `${import.meta.env.VITE_API_URL}/public/${model3DUrl.replace(/^\/+/, '')}`,
+                      src: normalizeApiAssetUrl(model3DUrl, "public"),
                       alt: 'Modelo 3D del producto',
                       'camera-controls': true,
                       'auto-rotate': true,
