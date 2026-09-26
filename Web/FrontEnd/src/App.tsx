@@ -53,6 +53,7 @@ const ReportVisitas = lazy(() => import("./pages/report/ReportVisitas"));
 const ReporteVentas = lazy(() => import("./pages/report/ReporteVentas"));
 const MarkAttendance = lazy(() => import("./pages/employees/MarkAttendance"));
 const AttendanceReports = lazy(() => import("./pages/employees/AttendanceReports"));
+const MyAttendance = lazy(() => import("./pages/employees/MyAttendance"));
 
 const AdminGuard = lazy(() => import("./components/AdminGuard"));
 const DeliveryHistoryGuard = lazy(() => import("./components/DeliveryHistoryGuard"));
@@ -85,6 +86,7 @@ function App() {
               <Route index element={<HomePage />} />
               <Route path="home" element={<HomePage />} />
               <Route path="profile" element={<ProfilePage />} />
+              <Route path="mi-asistencia" element={<MyAttendance />} />
               <Route
                 path="profile/change-password"
                 element={<ChangePasswordPage />}

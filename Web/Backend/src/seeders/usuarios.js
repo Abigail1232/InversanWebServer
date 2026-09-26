@@ -1,10 +1,22 @@
 const { PrismaClient } = require("@prisma/client");
 const bcrypt = require("bcrypt");
-const { access } = require("fs");
 
 const prisma = new PrismaClient();
 
 async function insertUsuarios() {
+  const roles = await prisma.rol.findMany({
+    orderBy: { id_rol: "asc" },
+    select: { id_rol: true, nombre: true },
+  });
+
+  const getRoleId = (nombre) => {
+    const role = roles.find((item) => item.nombre === nombre);
+    if (!role) {
+      throw new Error(`Rol no encontrado: ${nombre}`);
+    }
+    return role.id_rol;
+  };
+
   const usuarios = [
     {
       usuario: "admin",
@@ -16,7 +28,7 @@ async function insertUsuarios() {
       segundo_apellido: "Min",
       telefono: "1234567890",
       activo: true,
-      id_rol: 1, // Asumiendo que el rol de admin tiene id 1
+      id_rol: getRoleId("Admin"),
     },
     {
       usuario: "Vendedor1",
@@ -28,7 +40,7 @@ async function insertUsuarios() {
       segundo_apellido: "Uno",
       telefono: "1122334455",
       activo: true,
-      id_rol: 2, // Asumiendo que el rol de vendedor tiene id 2
+      id_rol: getRoleId("Vendedor"),
     },
     {
       usuario: "Gestor1",
@@ -40,7 +52,7 @@ async function insertUsuarios() {
       segundo_apellido: "Uno",
       telefono: "2233445566",
       activo: true,
-      id_rol: 3, // Asumiendo que el rol de gestor tiene id 3
+      id_rol: getRoleId("Gestor"),
     },
     {
       usuario: "user1",
@@ -52,7 +64,7 @@ async function insertUsuarios() {
       segundo_apellido: "One",
       telefono: "0987654321",
       activo: true,
-      id_rol: 4, // Asumiendo que el rol de user tiene id 4
+      id_rol: getRoleId("User"),
     },
     {
       usuario: "user2",
@@ -64,7 +76,7 @@ async function insertUsuarios() {
       segundo_apellido: "Two",
       telefono: "0987654322",
       activo: true,
-      id_rol: 4, // Asumiendo que el rol de user tiene id 4
+      id_rol: getRoleId("User"),
     },
     {
       usuario: "mayoreo",
@@ -76,14 +88,17 @@ async function insertUsuarios() {
       segundo_apellido: "User",
       telefono: "0987654323",
       activo: true,
-      id_rol: 5, // Asumiendo que el rol de mayoreo tiene id 5
+      id_rol: getRoleId("Mayoreo"),
     }
   ];
 
-  //!comando upsert es mejor que insertar porque solo crea el registro si no existe, si ya existe lo actualiza, esto evita errores de duplicados
+  // Seeds set a known password on creation; updates deliberately preserve an existing password.
   for (const usuarioData of usuarios) {
-    await prisma.usuario.create({
-      data: usuarioData,
+    const { clave, ...datosActualizables } = usuarioData;
+    await prisma.usuario.upsert({
+      where: { usuario: usuarioData.usuario },
+      update: datosActualizables,
+      create: { ...usuarioData, clave },
     });
   }
 }

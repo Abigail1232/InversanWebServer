@@ -9,6 +9,7 @@ export type AttendanceBranch = {
 export type AttendanceContext = {
   canAdministrarAsistencia: boolean;
   canReportesAsistencia: boolean;
+  canEditarAsistencia: boolean;
   defaultBranchId: number | null;
   sucursales: AttendanceBranch[];
 };
@@ -42,9 +43,9 @@ export type AttendanceReportRow = {
   usuario: string;
   nombre: string;
   sucursal: string;
-  rango_7_31_7_40: number;
-  rango_7_41_7_50: number;
-  despues_7_50: number;
+  rango_7_31_7_39: number;
+  rango_7_40_7_49: number;
+  desde_7_50: number;
   horas_faltadas: number;
   registros: number;
 };
@@ -69,6 +70,11 @@ export type AttendanceRecord = {
   };
 };
 
+export type MyAttendanceSummary = {
+  mes: string;
+  horas_faltadas: number;
+};
+
 export async function getAttendanceContext(): Promise<AttendanceContext> {
   const response = await api.get<AttendanceContext>("/api/asistencias/context");
   return response.data;
@@ -76,7 +82,6 @@ export async function getAttendanceContext(): Promise<AttendanceContext> {
 
 export async function getAttendanceDay(params: {
   id_sucursal: number;
-  fecha: string;
 }): Promise<AttendanceDayResponse> {
   const response = await api.get<AttendanceDayResponse>("/api/asistencias/dia", {
     params,
@@ -86,10 +91,12 @@ export async function getAttendanceDay(params: {
 
 export async function saveAttendance(payload: {
   id_sucursal: number;
-  fecha: string;
   asistencias: AttendanceSaveItem[];
-}) {
-  const response = await api.post("/api/asistencias/marcar", payload);
+}): Promise<{ success: boolean; mensaje: string; fecha: string; data: AttendanceRecord[] }> {
+  const response = await api.post<{ success: boolean; mensaje: string; fecha: string; data: AttendanceRecord[] }>(
+    "/api/asistencias/marcar",
+    payload,
+  );
   return response.data;
 }
 
@@ -129,4 +136,22 @@ export async function updateAttendanceRecord(params: {
     payload,
   );
   return response.data.data;
+}
+
+export async function getMyAttendanceSummary(params?: {
+  mes?: number;
+  anio?: number;
+}): Promise<MyAttendanceSummary> {
+  const response = await api.get<MyAttendanceSummary>("/api/asistencias/me/summary", {
+    params,
+  });
+  return response.data;
+}
+
+export async function getMyAttendanceRecords(params: {
+  fecha_inicio: string;
+  fecha_fin: string;
+}): Promise<AttendanceRecord[]> {
+  const response = await api.get<AttendanceRecord[]>("/api/asistencias/me", { params });
+  return response.data;
 }

@@ -120,19 +120,26 @@ const privilegios = [
   },
   {
     nombre: "ASI_ADMINISTRAR",
-    descripcion: "Permite administrar asistencia y seleccionar cualquier sucursal para registrar asistencia.",
+    descripcion: "Permite administrar asistencia dentro de las sucursales asignadas al usuario.",
   },
   {
     nombre: "ASI_REPORTES",
     descripcion: "Permite visualizar reportes de asistencia, horas faltadas y registros semanales por empleado.",
   },
+  {
+    nombre: "ASI_EDITAR",
+    descripcion: "Editar asistencia: permite modificar horas y observaciones de registros de asistencia.",
+  },
 ];
 
 async function Privilegios() {
   for (const privilegio of privilegios) {
-    await prisma.privilegio.create({
-      data: privilegio,
+    const existente = await prisma.privilegio.findFirst({
+      where: { nombre: privilegio.nombre },
     });
+    if (!existente) {
+      await prisma.privilegio.create({ data: privilegio });
+    }
   }
   console.log("Privilegios insertados");
 }

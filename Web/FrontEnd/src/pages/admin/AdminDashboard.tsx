@@ -6,6 +6,7 @@ import {
   LineChartOutlined,
   DashboardOutlined,
   EnvironmentOutlined,
+  ScheduleOutlined,
 } from "@ant-design/icons";
 import { getDashboardStats } from "../../api/admin/dashboard";
 import {
@@ -15,6 +16,7 @@ import {
   type PedidoEnCola,
 } from "../../api/delivery/entregas";
 import { getPrivilegesUser, type Privilegio } from "../../api/auth/privileges";
+import { getMyAttendanceSummary, type MyAttendanceSummary } from "../../api/attendance/attendance";
 import {
   CartesianGrid,
   Cell,
@@ -194,6 +196,7 @@ export default function AdminDashboard() {
   });
 
   const [permissions, setPermissions] = useState<Set<Permission>>(new Set());
+  const [attendanceSummary, setAttendanceSummary] = useState<MyAttendanceSummary | null>(null);
 
   const [totals, setTotals] = useState({
     pendingOrders: 0,
@@ -315,6 +318,24 @@ export default function AdminDashboard() {
     };
 
     void loadInitialData();
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const now = new Date();
+    void getMyAttendanceSummary({
+      mes: now.getMonth() + 1,
+      anio: now.getFullYear(),
+    })
+      .then((summary) => {
+        if (!cancelled) setAttendanceSummary(summary);
+      })
+      .catch(() => {
+        if (!cancelled) setAttendanceSummary(null);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -564,8 +585,29 @@ export default function AdminDashboard() {
 
 
 
-        {(canManageOrders || canViewInventory || canViewAdminSalesCards) && (
+        {(canManageOrders || canViewInventory || canViewAdminSalesCards || attendanceSummary) && (
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-6">
+            {attendanceSummary && (
+              <div
+                onClick={() => navigate("/mi-asistencia")}
+                className="bg-white border border-[#E5E7EB] rounded-[18px] px-5 py-4 shadow-sm min-h-[152px] cursor-pointer hover:border-[#027EB1] hover:shadow-md transition-all group"
+              >
+                <div className="flex items-start justify-between mb-4">
+                  <div className="text-[15px] leading-5 text-[#4B5563] group-hover:text-[#027EB1] transition-colors">
+                    Horas faltadas
+                    <br />
+                    este mes
+                  </div>
+                  <div className="w-10 h-10 rounded-xl bg-[#EAF7FD] flex items-center justify-center text-[#027EB1] text-[18px]">
+                    <ScheduleOutlined />
+                  </div>
+                </div>
+                <div className="text-[19px] md:text-[22px] font-bold text-[#111827]">
+                  {attendanceSummary.horas_faltadas} {attendanceSummary.horas_faltadas === 1 ? "hora" : "horas"}
+                </div>
+                <div className="text-[14px] text-[#027EB1] mt-3">Ver mi asistencia →</div>
+              </div>
+            )}
             {canViewAdminSalesCards && (
               <div 
                 onClick={() => navigate("/admin/reportes/ventas")}

@@ -35,9 +35,21 @@ async function insertRoles() {
   ];
 
   for (const rol of roles) {
-    await prisma.rol.create({
-      data: rol,
+    const existing = await prisma.rol.findFirst({
+      where: { nombre: rol.nombre },
+      orderBy: { id_rol: "asc" },
     });
+
+    if (existing) {
+      await prisma.rol.update({
+        where: { id_rol: existing.id_rol },
+        data: { descripcion: rol.descripcion, activo: true },
+      });
+    } else {
+      await prisma.rol.create({
+        data: { ...rol, activo: true },
+      });
+    }
   }
   console.log("Roles insertados");
 }

@@ -17,6 +17,7 @@ export type Permission =
   | "asistencia.marcar"
   | "asistencia.administrar"
   | "asistencia.reportes"
+  | "asistencia.editar"
   | "reportes.view"
   | "reportes.ventas"
   | "reportes.visitas"
@@ -53,13 +54,16 @@ export function mapPrivilegesToPermissions(privs: Privilegio[]): Permission[] {
         perm.push("inventario.historial");
         break;
       case "ASI_MARCAR":
-        perm.push("asistencia.marcar");
+        perm.push("asistencia.marcar", "asistencia.reportes");
         break;
       case "ASI_ADMINISTRAR":
-        perm.push("asistencia.administrar", "asistencia.marcar");
+        perm.push("asistencia.administrar", "asistencia.marcar", "asistencia.reportes");
         break;
       case "ASI_REPORTES":
         perm.push("asistencia.reportes");
+        break;
+      case "ASI_EDITAR":
+        perm.push("asistencia.editar");
         break;
       case "ADM_USUARIOS":
         perm.push("admin.usuarios");
@@ -119,6 +123,7 @@ export function mapPrivilegesToPermissions(privs: Privilegio[]): Permission[] {
           "asistencia.marcar",
           "asistencia.administrar",
           "asistencia.reportes",
+          "asistencia.editar",
           "reportes.view",
           "reportes.ventas",
           "reportes.visitas",

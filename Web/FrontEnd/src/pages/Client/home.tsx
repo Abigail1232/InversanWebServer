@@ -13,11 +13,14 @@ import { type Promotion, getPromotions } from "../../api/promotions/promotion";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { API_BASE_URL } from "../../config/api";
+import { getUserToken } from "../../api/user/user";
+import { getMyAttendanceSummary, type MyAttendanceSummary } from "../../api/attendance/attendance";
 
 export default function HomePage() {
   const navigate = useNavigate();
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [attendanceSummary, setAttendanceSummary] = useState<MyAttendanceSummary | null>(null);
   const fetchPromotions = async () => {
     const res = await getPromotions();
     console.log(res);
@@ -31,6 +34,26 @@ export default function HomePage() {
 
   useEffect(() => {
     fetchPromotions();
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void getUserToken().then(async (user) => {
+      if (!user?.empleado_sucursal?.length) return;
+      try {
+        const now = new Date();
+        const summary = await getMyAttendanceSummary({
+          mes: now.getMonth() + 1,
+          anio: now.getFullYear(),
+        });
+        if (!cancelled) setAttendanceSummary(summary);
+      } catch {
+        if (!cancelled) setAttendanceSummary(null);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -167,6 +190,26 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {attendanceSummary && (
+        <section className="mx-auto mb-6 max-w-[1400px] px-4">
+          <div className="flex flex-col gap-4 rounded-3xl border border-[#D7E3F0] bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-lg font-bold text-[#003E7B]">Horas faltadas este mes</h2>
+              <p className="mt-1 text-2xl font-bold text-[#027EB1]">
+                {attendanceSummary.horas_faltadas} {attendanceSummary.horas_faltadas === 1 ? "hora" : "horas"}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => navigate("/mi-asistencia")}
+              className="inline-flex items-center gap-2 self-start font-semibold text-[#027EB1] hover:text-[#003E7B] sm:self-auto"
+            >
+              Ver mi asistencia <ArrowRight className="h-4 w-4" />
+            </button>
+          </div>
+        </section>
+      )}
 
       {/* Hero Section */}
       <div className="max-w-[1400px] mx-auto px-4 animate-page-enter">

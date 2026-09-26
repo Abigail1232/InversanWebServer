@@ -25,7 +25,7 @@ interface PrivilegeCardProps {
 const PrivilegeCard = memo(({ priv, checked, disabled, onToggle }: PrivilegeCardProps) => (
   <div className="flex flex-col justify-between rounded-2xl border border-[#d1d5dc] bg-white p-5 shadow-sm">
     <div>
-      <p className="text-sm font-bold text-[#003E7B] mb-1">{priv.nombre}</p>
+      <p className="text-sm font-bold text-[#003E7B] mb-1">{priv.nombre === "ASI_EDITAR" ? "Editar asistencia" : priv.nombre}</p>
       <p className="text-xs text-[#6b7280] mb-4">{priv.descripcion}</p>
     </div>
     <div className="flex items-center gap-2">
@@ -81,7 +81,7 @@ const MobileCard = memo(({ record, privileges, assignedIds, onToggle }: MobileCa
             }`}
           >
             <div className="flex-1 min-w-0">
-              <p className={`text-sm font-medium truncate ${isDisabled ? 'text-gray-400' : 'text-gray-800'}`}>{priv.nombre}</p>
+              <p className={`text-sm font-medium truncate ${isDisabled ? 'text-gray-400' : 'text-gray-800'}`}>{priv.nombre === "ASI_EDITAR" ? "Editar asistencia" : priv.nombre}</p>
               <p className={`text-xs truncate mt-1 ${isDisabled ? 'text-gray-300' : 'text-gray-500'}`}>{priv.descripcion}</p>
             </div>
             <Checkbox

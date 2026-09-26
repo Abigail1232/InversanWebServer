@@ -163,6 +163,9 @@ export default function SidebarDrawer({
         hasPermission("asistencia.reportes")
           ? { key: "/admin/empleados/asistencia/reportes", label: "Reportes de asistencias" }
           : null,
+        currentUser.empleado_sucursal?.length
+          ? { key: "/mi-asistencia", label: "Mi asistencia" }
+          : null,
       ].filter(Boolean) as Array<{ key: string; label: string }>;
 
       if (children.length > 0) {
@@ -173,6 +176,19 @@ export default function SidebarDrawer({
           children,
         });
       }
+    }
+
+    if (
+      currentUser.empleado_sucursal?.length &&
+      !hasPermission("asistencia.marcar") &&
+      !hasPermission("asistencia.administrar") &&
+      !hasPermission("asistencia.reportes")
+    ) {
+      items.push({
+        key: "/mi-asistencia",
+        icon: <TeamOutlined />,
+        label: "Mi asistencia",
+      });
     }
 
     if (hasGestorOrAdminAccess) {
@@ -260,7 +276,7 @@ export default function SidebarDrawer({
     }
 
     return items;
-  }, [effectivePermissions, isAdmin, privileges, showDashboard, hasGestorOrAdminAccess]);
+  }, [currentUser.empleado_sucursal, effectivePermissions, isAdmin, privileges, showDashboard, hasGestorOrAdminAccess]);
 
   const userMenu = {
     items: [

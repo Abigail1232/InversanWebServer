@@ -3,30 +3,63 @@ const prisma = require("../../src/config/database");
 async function insertEmpleadoSucursal() {
   const asignaciones = [
     {
-      id_usuario: 3,
-      id_sucursal: 1,
+      usuario: "Gestor1",
+      sucursal: "Sucursal San Pedro Sula",
     },
     {
-      id_usuario: 4,
-      id_sucursal: 1,
+      usuario: "user1",
+      sucursal: "Sucursal San Pedro Sula",
     },
     {
-      id_usuario: 1,
-      id_sucursal: 1,
+      usuario: "admin",
+      sucursal: "Sucursal San Pedro Sula",
     },
     {
-      id_usuario: 1,
-      id_sucursal: 2,
+      usuario: "admin",
+      sucursal: "Sucursal Tegucigalpa",
     },
     {
-      id_usuario: 2,
-      id_sucursal: 2,
+      usuario: "Vendedor1",
+      sucursal: "Sucursal Tegucigalpa",
     },
   ];
-  for (const eu of asignaciones) {
-    await prisma.empleado_Sucursal.create({
-      data: eu,
+
+  for (const asignacion of asignaciones) {
+    const usuario = await prisma.usuario.findUnique({
+      where: { usuario: asignacion.usuario },
+      select: { id_usuario: true },
     });
+    if (!usuario) {
+      throw new Error(`Usuario no encontrado: ${asignacion.usuario}`);
+    }
+
+    const sucursal = await prisma.sucursal.findFirst({
+      where: { nombre: asignacion.sucursal },
+      orderBy: { id_sucursal: "asc" },
+      select: { id_sucursal: true },
+    });
+    if (!sucursal) {
+      throw new Error(`Sucursal no encontrada: ${asignacion.sucursal}`);
+    }
+
+    const existing = await prisma.empleado_Sucursal.findUnique({
+      where: {
+        id_usuario_id_sucursal: {
+          id_usuario: usuario.id_usuario,
+          id_sucursal: sucursal.id_sucursal,
+        },
+      },
+      select: { id_empleado_sucursal: true },
+    });
+
+    if (!existing) {
+      await prisma.empleado_Sucursal.create({
+        data: {
+          id_usuario: usuario.id_usuario,
+          id_sucursal: sucursal.id_sucursal,
+        },
+      });
+    }
   }
 
   console.log("Asignaciones de Empleado y Usuarios insertadas correctamente");

@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button, Input, Select, Tag, message } from "antd";
-import dayjs from "dayjs";
 import {
   getAttendanceContext,
   getAttendanceDay,
@@ -9,7 +8,27 @@ import {
   type AttendanceEmployeeDay,
 } from "../../api/attendance/attendance";
 
-const today = dayjs().format("YYYY-MM-DD");
+function getHondurasDateString() {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Tegucigalpa",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
+function formatAttendanceDate(value: string) {
+  const [year, month, day] = value.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day, 12));
+  return new Intl.DateTimeFormat("es-HN", {
+    timeZone: "America/Tegucigalpa",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(date);
+}
 
 function getPenaltyLabel(categoria: string, horas: number) {
   if (categoria === "puntual") return "Puntual";
@@ -28,25 +47,11 @@ function getPenaltyColor(categoria: string) {
   return "default";
 }
 
-function calculatePreview(hora: string) {
-  if (!/^\d{2}:\d{2}$/.test(hora)) {
-    return { categoria: "sin_registro", horas: 0 };
-  }
-
-  const [hours, minutes] = hora.split(":").map(Number);
-  const total = hours * 60 + minutes;
-
-  if (total <= 7 * 60 + 30) return { categoria: "puntual", horas: 0 };
-  if (total <= 7 * 60 + 40) return { categoria: "penalizacion_1h", horas: 1 };
-  if (total <= 7 * 60 + 50) return { categoria: "penalizacion_2h", horas: 2 };
-  return { categoria: "falta_jornada", horas: 8 };
-}
-
 export default function MarkAttendance() {
   const [msg, contextHolder] = message.useMessage();
   const [context, setContext] = useState<AttendanceContext | null>(null);
   const [branchId, setBranchId] = useState<number | undefined>();
-  const [fecha, setFecha] = useState(today);
+  const [fecha, setFecha] = useState(getHondurasDateString);
   const [employees, setEmployees] = useState<AttendanceEmployeeDay[]>([]);
   const [hoursByUser, setHoursByUser] = useState<Record<number, string>>({});
   const [observationsByUser, setObservationsByUser] = useState<Record<number, string>>({});
@@ -91,9 +96,10 @@ export default function MarkAttendance() {
     let cancelled = false;
     setLoadingDay(true);
 
-    void getAttendanceDay({ id_sucursal: branchId, fecha })
+    void getAttendanceDay({ id_sucursal: branchId })
       .then((data) => {
         if (cancelled) return;
+        setFecha(data.fecha);
         setEmployees(data.empleados);
         setHoursByUser(
           Object.fromEntries(data.empleados.map((employee) => [employee.id_usuario, employee.hora_entrada || ""])),
@@ -112,7 +118,7 @@ export default function MarkAttendance() {
     return () => {
       cancelled = true;
     };
-  }, [branchId, fecha, msg]);
+  }, [branchId, msg]);
 
   const handleSave = async () => {
     if (!branchId) {
@@ -133,9 +139,8 @@ export default function MarkAttendance() {
 
     setSaving(true);
     try {
-      await saveAttendance({
+      const saved = await saveAttendance({
         id_sucursal: branchId,
-        fecha,
         asistencias: employees.map((employee) => ({
           id_usuario: employee.id_usuario,
           hora_entrada: hoursByUser[employee.id_usuario],
@@ -143,8 +148,10 @@ export default function MarkAttendance() {
         })),
       });
 
+      setFecha(saved.fecha);
       msg.success("Asistencia guardada correctamente");
-      const refreshed = await getAttendanceDay({ id_sucursal: branchId, fecha });
+      const refreshed = await getAttendanceDay({ id_sucursal: branchId });
+      setFecha(refreshed.fecha);
       setEmployees(refreshed.empleados);
       setHoursByUser(
         Object.fromEntries(refreshed.empleados.map((employee) => [employee.id_usuario, employee.hora_entrada || ""])),
@@ -171,7 +178,7 @@ export default function MarkAttendance() {
               </p>
               <h1 className="mt-1 text-2xl font-bold text-[#003E7B]">Marcar asistencia</h1>
               <p className="mt-2 max-w-3xl text-sm text-slate-500">
-                Registre la hora de entrada de cada empleado activo de la sucursal. La sucursal queda bloqueada salvo para usuarios con privilegio de administrar asistencia.
+                Registre la hora de entrada de cada empleado activo de la sucursal. Solo el administrador puede seleccionar otra sucursal.
               </p>
             </div>
             <Button
@@ -207,13 +214,10 @@ export default function MarkAttendance() {
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-semibold text-slate-700">Fecha</label>
-            <Input
-              size="large"
-              type="date"
-              value={fecha}
-              onChange={(event) => setFecha(event.target.value || today)}
-            />
+            <label className="mb-2 block text-sm font-semibold text-slate-700">Fecha de asistencia</label>
+            <div className="flex min-h-10 items-center rounded-lg border border-[#D7E3F0] bg-[#F8FAFC] px-3 py-2 text-sm font-medium text-slate-700">
+              {formatAttendanceDate(fecha)}
+            </div>
           </div>
         </div>
 
@@ -221,7 +225,7 @@ export default function MarkAttendance() {
           <div className="border-b border-[#E5EDF6] px-5 py-4">
             <h2 className="text-lg font-bold text-[#003E7B]">Empleados activos</h2>
             <p className="text-sm text-slate-500">
-              Reglas: hasta 7:30 puntual, 7:31 a 7:40 = 1 hora faltada, 7:41 a 7:50 = 2 horas faltadas, después de 7:50 = 8 horas faltadas.
+              Reglas: hasta 7:30 puntual, 7:31 a 7:39 = 1 hora faltada, 7:40 a 7:49 = 2 horas faltadas, desde 7:50 = 8 horas faltadas.
             </p>
           </div>
 
@@ -251,7 +255,9 @@ export default function MarkAttendance() {
                   </tr>
                 ) : (
                   employees.map((employee) => {
-                    const preview = calculatePreview(hoursByUser[employee.id_usuario] || "");
+                    const hour = hoursByUser[employee.id_usuario] || "";
+                    const unchanged = hour === employee.hora_entrada;
+                    const locked = Boolean(employee.id_asistencia) && !context?.canEditarAsistencia;
                     return (
                       <tr key={employee.id_usuario} className="border-b border-[#E5EDF6] hover:bg-[#F8FAFC]">
                         <td className="px-4 py-3 text-sm font-semibold text-slate-700">{employee.id_usuario}</td>
@@ -263,6 +269,7 @@ export default function MarkAttendance() {
                           <Input
                             type="time"
                             value={hoursByUser[employee.id_usuario] || ""}
+                            disabled={locked}
                             onChange={(event) =>
                               setHoursByUser((prev) => ({
                                 ...prev,
@@ -272,14 +279,21 @@ export default function MarkAttendance() {
                           />
                         </td>
                         <td className="px-4 py-3 text-center">
-                          <Tag color={getPenaltyColor(preview.categoria)}>
-                            {getPenaltyLabel(preview.categoria, preview.horas)}
+                          <Tag color={unchanged ? getPenaltyColor(employee.categoria) : "default"}>
+                            {locked
+                              ? "Ya registrada"
+                              : !hour
+                              ? "Sin registro"
+                              : unchanged
+                                ? getPenaltyLabel(employee.categoria, employee.horas_faltadas)
+                                : "Se calculará al guardar"}
                           </Tag>
                         </td>
                         <td className="px-4 py-3">
                           <Input
                             value={observationsByUser[employee.id_usuario] || ""}
                             placeholder="Opcional"
+                            disabled={locked}
                             onChange={(event) =>
                               setObservationsByUser((prev) => ({
                                 ...prev,

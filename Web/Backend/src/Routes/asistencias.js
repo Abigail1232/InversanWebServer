@@ -38,20 +38,33 @@ router.post(
 
 router.get(
   "/reportes",
-  verificarPrivilegios(PRIVILEGIOS.ASI_REPORTES, PRIVILEGIOS.ALL_ACCESS),
+  verificarPrivilegios(
+    PRIVILEGIOS.ASI_REPORTES,
+    PRIVILEGIOS.ASI_MARCAR,
+    PRIVILEGIOS.ASI_ADMINISTRAR,
+    PRIVILEGIOS.ALL_ACCESS,
+  ),
   asistenciasController.getAttendanceReports,
 );
 
 router.get(
   "/reportes/:idUsuario/registros",
-  verificarPrivilegios(PRIVILEGIOS.ASI_REPORTES, PRIVILEGIOS.ALL_ACCESS),
+  verificarPrivilegios(
+    PRIVILEGIOS.ASI_REPORTES,
+    PRIVILEGIOS.ASI_MARCAR,
+    PRIVILEGIOS.ASI_ADMINISTRAR,
+    PRIVILEGIOS.ALL_ACCESS,
+  ),
   asistenciasController.getUserAttendanceRecords,
 );
 
 router.put(
   "/:idAsistencia",
-  verificarPrivilegios(PRIVILEGIOS.ASI_REPORTES, PRIVILEGIOS.ASI_ADMINISTRAR, PRIVILEGIOS.ALL_ACCESS),
+  verificarPrivilegios(PRIVILEGIOS.ASI_EDITAR, PRIVILEGIOS.ALL_ACCESS),
   asistenciasController.updateAttendance,
 );
+
+router.get("/me/summary", asistenciasController.getMyAttendanceSummary);
+router.get("/me", asistenciasController.getMyAttendanceRecords);
 
 module.exports = router;

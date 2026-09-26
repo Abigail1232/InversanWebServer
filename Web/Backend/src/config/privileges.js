@@ -49,10 +49,12 @@ const PRIVILEGIOS = {
   // ===== ASISTENCIAS =====
   /** Marcar asistencia de empleados en la sucursal asignada */
   MARCAR_ASISTENCIA: "ASI_MARCAR",
-  /** Administrar asistencia de cualquier sucursal */
+  /** Administrar asistencia en las sucursales asignadas */
   ADMINISTRAR_ASISTENCIA: "ASI_ADMINISTRAR",
   /** Ver reportes de asistencias */
   VER_REPORTES_ASISTENCIA: "ASI_REPORTES",
+  /** Editar registros de asistencia */
+  EDITAR_ASISTENCIA: "ASI_EDITAR",
 
   // ===== PEDIDOS =====
   /** Gestionar pedidos: asignar repartidores, cambiar estado */
@@ -94,6 +96,7 @@ const PRIVILEGIOS = {
   ASI_MARCAR: "ASI_MARCAR",
   ASI_ADMINISTRAR: "ASI_ADMINISTRAR",
   ASI_REPORTES: "ASI_REPORTES",
+  ASI_EDITAR: "ASI_EDITAR",
   PED_PEDIDOS: "PED_PEDIDOS",
   PED_ENTREGA: "PED_ENTREGA",
   PED_HISTORIAL: "PED_HISTORIAL",
@@ -123,6 +126,7 @@ const PRIVILEGE_GROUPS = {
     PRIVILEGIOS.ASI_MARCAR,
     PRIVILEGIOS.ASI_ADMINISTRAR,
     PRIVILEGIOS.ASI_REPORTES,
+    PRIVILEGIOS.ASI_EDITAR,
   ],
 
   // Cualquier privilegio de pedidos
