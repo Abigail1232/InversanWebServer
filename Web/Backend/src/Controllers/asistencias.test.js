@@ -8,6 +8,8 @@ const prisma = {
     findUnique: async () => null,
   },
   sucursal: { findMany: async () => [] },
+  biometria_Facial: { findUnique: async () => null },
+  solicitud_Biometria: { findFirst: async () => null },
   asistencia: {
     aggregate: async () => ({ _sum: { horas_faltadas: 0 } }),
     findMany: async () => [],
@@ -496,6 +498,57 @@ test("attendance controller enforces branch and self-service access", async (t) 
     assert.equal(res.statusCode, 200);
     assert.equal(queriedWhere.id_usuario, 12);
     assert.deepEqual(res.body.map((record) => record.id_usuario), [12]);
+  });
+
+  await t.test("self check-in status requires explicit branch when employee has multiple active branches", async () => {
+    prisma.empleado_Sucursal.findMany = async () => [
+      {
+        id_sucursal: 3,
+        sucursal: { id_sucursal: 3, nombre: "Central", location_configured: true, attendance_radius_m: 75, max_gps_accuracy_m: 50 },
+      },
+      {
+        id_sucursal: 4,
+        sucursal: { id_sucursal: 4, nombre: "Norte", location_configured: true, attendance_radius_m: 75, max_gps_accuracy_m: 50 },
+      },
+    ];
+
+    const res = createResponse();
+    await attendanceController.getMyCheckinStatus(
+      { user: { id_usuario: 12 }, query: {} },
+      res,
+    );
+
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.body.eligible, false);
+    assert.equal(res.body.code, "MULTIPLE_BRANCHES_SELECT_REQUIRED");
+    assert.deepEqual(res.body.branches.map((branch) => branch.id), [3, 4]);
+  });
+
+  await t.test("self check-in status uses selected branch only if assigned", async () => {
+    prisma.empleado_Sucursal.findMany = async () => [
+      {
+        id_sucursal: 3,
+        sucursal: { id_sucursal: 3, nombre: "Central", location_configured: true, attendance_radius_m: 75, max_gps_accuracy_m: 50 },
+      },
+      {
+        id_sucursal: 4,
+        sucursal: { id_sucursal: 4, nombre: "Norte", location_configured: true, attendance_radius_m: 90, max_gps_accuracy_m: 60 },
+      },
+    ];
+    prisma.biometria_Facial.findUnique = async () => ({ activo: true });
+    prisma.solicitud_Biometria.findFirst = async () => null;
+    prisma.asistencia.findUnique = async () => null;
+
+    const res = createResponse();
+    await attendanceController.getMyCheckinStatus(
+      { user: { id_usuario: 12 }, query: { id_sucursal: "4" } },
+      res,
+    );
+
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.body.eligible, true);
+    assert.equal(res.body.branch.id, 4);
+    assert.equal(res.body.branch.radiusMeters, 90);
   });
 
   await t.test("report-only privilege cannot update attendance", async () => {

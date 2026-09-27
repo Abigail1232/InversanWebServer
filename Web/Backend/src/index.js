@@ -72,8 +72,9 @@ app.use(
     exposedHeaders: ['x-cart-token']
   })
 );
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+const jsonLimit = process.env.JSON_BODY_LIMIT || "2mb";
+app.use(express.json({ limit: jsonLimit }));
+app.use(express.urlencoded({ extended: true, limit: jsonLimit }));
 app.use(cookieParser());
 const assetsDir = path.join(process.cwd(), "assets");
 app.use("/public", express.static(assetsDir, { maxAge: "1h", etag: true }));

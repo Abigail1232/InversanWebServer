@@ -10,6 +10,7 @@ export type Permission =
   | "admin.roles"
   | "admin.usuarios"
   | "admin.permisos"
+  | "admin.biometria"
   | "admin.sucursales"
   | "admin.categorias"
   | "inventario.ingreso"
@@ -78,6 +79,9 @@ export function mapPrivilegesToPermissions(privs: Privilegio[]): Permission[] {
       case "ADM_PERMISOS":
         perm.push("admin.permisos");
         break;
+      case "ASI_BIOMETRIA_ADMINISTRAR":
+        perm.push("admin.biometria");
+        break;
       case "REP_VENTAS":
         perm.push("reportes.ventas", "reportes.view");
         break;
@@ -116,6 +120,7 @@ export function mapPrivilegesToPermissions(privs: Privilegio[]): Permission[] {
           "admin.roles",
           "admin.usuarios",
           "admin.permisos",
+          "admin.biometria",
           "admin.sucursales",
           "admin.categorias",
           "inventario.ingreso",
@@ -151,6 +156,7 @@ const STAFF_PERMISSIONS: Permission[] = [
   "admin.roles",
   "admin.usuarios",
   "admin.permisos",
+  "admin.biometria",
   "admin.sucursales",
   "admin.categorias",
   "inventario.ingreso",
@@ -190,6 +196,7 @@ export function getRequiredPermissionForAdminPath(pathname: string): Permission[
   // Usuarios y permisos
   if (path === "/admin/users") return ["admin.usuarios"];
   if (path === "/admin/permissions") return ["admin.permisos"];
+  if (path === "/admin/biometria") return ["admin.biometria"];
   if (path === "/admin/roles") return ["admin.roles"];
 
   // Sucursales y bodegas

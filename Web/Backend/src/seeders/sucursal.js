@@ -13,6 +13,7 @@ async function insertSucursal() {
       direccion: "Calle Principal 123, San Pedro Sula",
       lat: 15.5,
       lng: -88.0,
+      location_configured: false,
     },
     {
       id_sucursal: 2,
@@ -24,6 +25,7 @@ async function insertSucursal() {
       direccion: "Avenida Central 456, Tegucigalpa",
       lat: 14.0,
       lng: -87.2,
+      location_configured: false,
     },
   ];
 

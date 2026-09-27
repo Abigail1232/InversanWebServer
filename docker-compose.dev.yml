@@ -71,12 +71,35 @@ services:
       COOKIE_DOMAIN: ""
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5000}
       CORS_ORIGINS: "${CORS_ORIGINS:-http://localhost:5000,http://127.0.0.1:5000,http://localhost:5173,http://127.0.0.1:5173}"
+      FACE_SERVICE_URL: http://face-service:8000
+      BIOMETRIC_ENABLED: ${BIOMETRIC_ENABLED:-true}
+      FACE_MATCH_THRESHOLD: ${FACE_MATCH_THRESHOLD:-0.55}
+      LIVENESS_CHALLENGE_TTL_SECONDS: ${LIVENESS_CHALLENGE_TTL_SECONDS:-90}
     command: sh -c "npx prisma generate && npx prisma migrate deploy && npm run dev"
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
+      face-service:
+        condition: service_healthy
+    networks:
+      - inversan_net
+
+  face-service:
+    build:
+      context: ./FaceService
+    container_name: inversan_local_face_service
+    expose:
+      - "8000"
+    restart: unless-stopped
+    volumes:
+      - face_models:/root/.insightface
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/ready')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     networks:
       - inversan_net
 
@@ -93,6 +116,7 @@ services:
     environment:
       CHOKIDAR_USEPOLLING: "true"
       VITE_API_URL: ${VITE_API_URL:-http://localhost:3000}
+    command: sh -c "npm install --no-audit --no-fund && npm run dev"
     depends_on:
       - backend
     networks:
@@ -101,6 +125,7 @@ services:
 volumes:
   db_data:
   redis_data:
+  face_models:
 
 networks:
   inversan_net:

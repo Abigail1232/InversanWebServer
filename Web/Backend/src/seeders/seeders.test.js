@@ -3,6 +3,17 @@ const Module = require("node:module");
 const { test } = require("node:test");
 
 function loadSeeders(prisma) {
+  const originalLoad = Module._load;
+  Module._load = function patchedLoad(request, parent, isMain) {
+    if (request === "@prisma/client") {
+      return { PrismaClient: class { constructor() { return prisma; } } };
+    }
+    if (request === "bcrypt") {
+      return { hash: async (password) => `hashed:${password}` };
+    }
+    return originalLoad.call(this, request, parent, isMain);
+  };
+
   const databasePath = require.resolve("../config/database");
   const databaseModule = new Module(databasePath);
   databaseModule.filename = databasePath;
@@ -10,21 +21,8 @@ function loadSeeders(prisma) {
   databaseModule.exports = prisma;
   require.cache[databasePath] = databaseModule;
 
-  const prismaClientPath = require.resolve("@prisma/client");
-  const prismaClientModule = new Module(prismaClientPath);
-  prismaClientModule.filename = prismaClientPath;
-  prismaClientModule.loaded = true;
-  prismaClientModule.exports = { PrismaClient: class { constructor() { return prisma; } } };
-  require.cache[prismaClientPath] = prismaClientModule;
-
-  const bcryptPath = require.resolve("bcrypt");
-  const bcryptModule = new Module(bcryptPath);
-  bcryptModule.filename = bcryptPath;
-  bcryptModule.loaded = true;
-  bcryptModule.exports = { hash: async (password) => `hashed:${password}` };
-  require.cache[bcryptPath] = bcryptModule;
-
   return {
+    Privilegios: require("./privilegios").Privilegios,
     insertRoles: require("./Roles").insertRoles,
     insertUsuarios: require("./usuarios").insertUsuarios,
     insertEmpleadoSucursal: require("./empleado_sucursal").insertEmpleadoSucursal,
@@ -100,7 +98,15 @@ function createSeedDatabase() {
         return item;
       },
     },
-    privilegio: { findMany: async () => [...state.privileges] },
+    privilegio: {
+      findFirst: async ({ where }) => state.privileges.find((privilege) => privilege.nombre === where.nombre) || null,
+      findMany: async () => [...state.privileges],
+      create: async ({ data }) => {
+        const privilege = { id_privilegio: state.privileges.length + 1, ...data };
+        state.privileges.push(privilege);
+        return privilege;
+      },
+    },
     rol_Privilegio: {
       create: async ({ data }) => {
         const duplicate = state.rolePrivileges.some((item) =>
@@ -125,6 +131,7 @@ test("seeders are repeatable and resolve roles/users/branches by names", async (
   const seeders = loadSeeders(prisma);
 
   for (let run = 0; run < 2; run += 1) {
+    await seeders.Privilegios();
     await seeders.insertRoles();
     await seeders.insertRolPrivilegio();
     await seeders.insertUsuarios();
@@ -157,6 +164,7 @@ test("seeders are repeatable and resolve roles/users/branches by names", async (
     state.privileges.find((privilege) => privilege.id_privilegio === item.id_privilegio).nombre === "ALL_ACCESS",
   );
   assert.equal(adminAccess.length, 1);
+  assert(state.privileges.some((privilege) => privilege.nombre === "ASI_BIOMETRIA_ADMINISTRAR"));
 
   const markerRoleId = rolesByName.get("Marcar asistencia").id_rol;
   const markerPrivileges = state.rolePrivileges

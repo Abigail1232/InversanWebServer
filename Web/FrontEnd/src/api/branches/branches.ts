@@ -60,8 +60,10 @@ export async function createBranch(data: {
   city: string,
   state: string,
   location: string,
-  lat: number,
-  lng: number
+  lat?: number,
+  lng?: number,
+  attendance_radius_m?: number,
+  max_gps_accuracy_m?: number,
 }){
   try {
     let departamentoId: number | null = null;
@@ -108,6 +110,8 @@ export async function createBranch(data: {
         direccion: data.location,
         lat: data.lat,
         lng: data.lng,
+        attendance_radius_m: data.attendance_radius_m,
+        max_gps_accuracy_m: data.max_gps_accuracy_m,
         id_municipio: municipioId,
       },
       { withCredentials: true }
@@ -159,8 +163,10 @@ export async function updateBranch(id:number, data: {
   city: string,
   state: string,
   location: string,
-  lat: number,
-  lng: number
+  lat?: number,
+  lng?: number,
+  attendance_radius_m?: number,
+  max_gps_accuracy_m?: number,
 }){
   try{
     let departamentoId: number | null = null;
@@ -209,6 +215,8 @@ export async function updateBranch(id:number, data: {
         direccion: data.location,
         lat: data.lat,
         lng: data.lng,
+        attendance_radius_m: data.attendance_radius_m,
+        max_gps_accuracy_m: data.max_gps_accuracy_m,
         id_municipio: municipioId,
       },
       { withCredentials: true }

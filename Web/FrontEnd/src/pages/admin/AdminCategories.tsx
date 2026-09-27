@@ -9,7 +9,7 @@ import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 import { DataTable, type DataTableColumn } from "../../components/DataTable";
 import DeactivateModal from "../../components/modal/DeactivateModal";
-import { buildAssetUrl, normalizeApiAssetUrl } from "../../config/api";
+import { normalizeApiAssetUrl } from "../../config/api";
 
 import {getCategoriasAdmin,crearCategoria,modificarCategoria,eliminarCategoria,type Categoria} from "../../api/products/categorias";
 

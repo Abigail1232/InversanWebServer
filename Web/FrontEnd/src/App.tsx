@@ -22,6 +22,7 @@ const PromotionPage = lazy(() => import("./pages/Client/promotion"));
 const BrandPage = lazy(() => import("./pages/Client/brandPage"));
 const AdminUsers = lazy(() => import("./pages/admin/AdminUsers"));
 const AdminPermisos = lazy(() => import("./pages/admin/AdminPermisos"));
+const AdminBiometrics = lazy(() => import("./pages/admin/AdminBiometrics"));
 const HomePage = lazy(() => import("./pages/Client/home"));
 const ProfilePage = lazy(() => import("./pages/Client/profile"));
 const ChangePasswordPage = lazy(() => import("./pages/Client/changePassword"));
@@ -54,6 +55,7 @@ const ReporteVentas = lazy(() => import("./pages/report/ReporteVentas"));
 const MarkAttendance = lazy(() => import("./pages/employees/MarkAttendance"));
 const AttendanceReports = lazy(() => import("./pages/employees/AttendanceReports"));
 const MyAttendance = lazy(() => import("./pages/employees/MyAttendance"));
+const SelfAttendance = lazy(() => import("./pages/employees/SelfAttendance"));
 
 const AdminGuard = lazy(() => import("./components/AdminGuard"));
 const DeliveryHistoryGuard = lazy(() => import("./components/DeliveryHistoryGuard"));
@@ -87,6 +89,7 @@ function App() {
               <Route path="home" element={<HomePage />} />
               <Route path="profile" element={<ProfilePage />} />
               <Route path="mi-asistencia" element={<MyAttendance />} />
+              <Route path="marcar-mi-asistencia" element={<SelfAttendance />} />
               <Route
                 path="profile/change-password"
                 element={<ChangePasswordPage />}
@@ -124,6 +127,7 @@ function App() {
                 <Route path="dashboard" element={<AdminDashboard />} />
                 <Route path="users" element={<AdminUsers />} />
                 <Route path="permissions" element={<AdminPermisos />} />
+                <Route path="biometria" element={<AdminBiometrics />} />
                 <Route path="branches" element={<AdminBranches />} />
                 <Route path="categories" element={<AdminCategories />} />
                 <Route path="roles" element={<AdminRoles />} />

@@ -16,6 +16,14 @@ const globalErrorHandler = (err, req, res, next) => {
     console.error('ERROR 💥', err);
   }
 
+  if (err.type === 'entity.too.large') {
+    return res.status(413).json({
+      success: false,
+      code: 'PAYLOAD_TOO_LARGE',
+      error: 'La evidencia biométrica es demasiado grande. Inténtalo nuevamente.',
+    });
+  }
+
   // Manejo de errores conocidos de Prisma
   if (err instanceof Prisma.PrismaClientKnownRequestError) {
     if (err.code === 'P2002') {

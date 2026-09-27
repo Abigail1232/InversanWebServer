@@ -64,3 +64,13 @@ Web/Backend/assets/[0-9]*-*.jpeg
 Web/Backend/assets/[0-9]*-*.png
 Web/Backend/assets/[0-9]*-*.gif
 Web/Backend/assets/[0-9]*-*.webp
+
+# Python
+**/__pycache__/
+**/*.py[cod]
+**/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/
+*.egg-info/
+.venv/
+venv/

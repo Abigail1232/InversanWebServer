@@ -69,12 +69,13 @@ export default function SidebarDrawer({
     () => canSeeDashboard(effectivePermissions),
     [effectivePermissions],
   );
+  const hasEmployeeBranch = Boolean(currentUser.empleado_sucursal?.length);
 
   const hasGestorOrAdminAccess = useMemo(
     () =>
       isAdmin ||
       effectivePermissions.some((p) =>
-        ["admin.categorias", "admin.productos", "admin.modelos", "admin.marcas", "admin.disenos", "admin.promocion"].includes(p),
+        ["admin.categorias", "admin.productos", "admin.modelos", "admin.marcas", "admin.disenos", "admin.promocion", "admin.biometria"].includes(p),
       ),
     [isAdmin, effectivePermissions],
   );
@@ -128,6 +129,7 @@ export default function SidebarDrawer({
       hasPermission("admin.roles") ||
       hasPermission("admin.usuarios") ||
       hasPermission("admin.permisos")
+      || hasPermission("admin.biometria")
     ) {
       const children = [
         hasPermission("admin.roles")
@@ -138,6 +140,9 @@ export default function SidebarDrawer({
           : null,
         hasPermission("admin.permisos")
           ? { key: "/admin/permissions", label: "Administración de Permisos" }
+          : null,
+        hasPermission("admin.biometria")
+          ? { key: "/admin/biometria", label: "Administración de Biometría" }
           : null,
       ].filter(Boolean) as Array<{ key: string; label: string }>;
 
@@ -154,7 +159,8 @@ export default function SidebarDrawer({
     if (
       hasPermission("asistencia.marcar") ||
       hasPermission("asistencia.administrar") ||
-      hasPermission("asistencia.reportes")
+      hasPermission("asistencia.reportes") ||
+      hasEmployeeBranch
     ) {
       const children = [
         hasPermission("asistencia.marcar") || hasPermission("asistencia.administrar")
@@ -163,8 +169,11 @@ export default function SidebarDrawer({
         hasPermission("asistencia.reportes")
           ? { key: "/admin/empleados/asistencia/reportes", label: "Reportes de asistencias" }
           : null,
-        currentUser.empleado_sucursal?.length
+        hasEmployeeBranch
           ? { key: "/mi-asistencia", label: "Mi asistencia" }
+          : null,
+        hasEmployeeBranch
+          ? { key: "/marcar-mi-asistencia", label: "Marcar mi asistencia" }
           : null,
       ].filter(Boolean) as Array<{ key: string; label: string }>;
 
@@ -176,19 +185,6 @@ export default function SidebarDrawer({
           children,
         });
       }
-    }
-
-    if (
-      currentUser.empleado_sucursal?.length &&
-      !hasPermission("asistencia.marcar") &&
-      !hasPermission("asistencia.administrar") &&
-      !hasPermission("asistencia.reportes")
-    ) {
-      items.push({
-        key: "/mi-asistencia",
-        icon: <TeamOutlined />,
-        label: "Mi asistencia",
-      });
     }
 
     if (hasGestorOrAdminAccess) {
@@ -276,7 +272,7 @@ export default function SidebarDrawer({
     }
 
     return items;
-  }, [currentUser.empleado_sucursal, effectivePermissions, isAdmin, privileges, showDashboard, hasGestorOrAdminAccess]);
+  }, [hasEmployeeBranch, effectivePermissions, isAdmin, privileges, showDashboard, hasGestorOrAdminAccess]);
 
   const userMenu = {
     items: [
@@ -435,7 +431,7 @@ export default function SidebarDrawer({
       placement="left"
       open={open}
       onClose={onClose}
-      width={DESKTOP_WIDTH}
+      size={DESKTOP_WIDTH}
       styles={{
         body: {
           display: "flex",

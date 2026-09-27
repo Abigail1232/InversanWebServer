@@ -3,6 +3,10 @@ const prisma = require("../../src/config/database");
 /**
  * Lista completa de privilegios del sistema.
  *
+  {
+    nombre: "ASI_BIOMETRIA_ADMINISTRAR",
+    descripcion: "Registrar, reemplazar o desactivar biometría facial de empleados.",
+  },
  * IMPORTANTE: El orden importa porque los IDs se asignan secuencialmente.
  * Si agregas nuevos privilegios, agrégalos al FINAL para no romper las relaciones existentes.
  */
@@ -129,6 +133,11 @@ const privilegios = [
   {
     nombre: "ASI_EDITAR",
     descripcion: "Editar asistencia: permite modificar horas y observaciones de registros de asistencia.",
+  },
+  {
+    nombre: "ASI_BIOMETRIA_ADMINISTRAR",
+    descripcion:
+      "Registrar, reemplazar, aprobar, rechazar o desactivar biometrÃ­a facial de empleados.",
   },
 ];
 

@@ -27,7 +27,7 @@ import { saveModel } from "../../api/admin/models";
 import { crearMarca } from "../../api/products/marcas";
 import { getDisenos, crearDiseno, type Diseno } from "../../api/admin/disenos";
 import BrandModal from "./BrandModal";
-import { buildAssetUrl, normalizeApiAssetUrl } from "../../config/api";
+import { normalizeApiAssetUrl } from "../../config/api";
 
 
 interface DesignModalProps {

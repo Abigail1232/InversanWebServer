@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Button, Input, Select, Modal, Form, message, Switch, ConfigProvider } from "antd";
+import { Button, Input, InputNumber, Select, Modal, Form, message, Switch, ConfigProvider } from "antd";
 import {
   SearchOutlined,
   PlusOutlined,
@@ -62,7 +62,7 @@ function MapPickerLazy({
   onCityChange,
   country = "Honduras",
 }: {
-  value: LatLng;
+  value: LatLng | null;
   onChange: (v: LatLng) => void;
   address: string;
   onAddressChange: (addr: string) => void;
@@ -75,8 +75,8 @@ function MapPickerLazy({
   const [locationLoading, setLocationLoading] = useState(false);
 
   const mapSrc = useMemo(() => {
-    const lat = Number(value.lat) || SANTA_ROSA_COPAN.lat;
-    const lng = Number(value.lng) || SANTA_ROSA_COPAN.lng;
+    const lat = Number(value?.lat) || SANTA_ROSA_COPAN.lat;
+    const lng = Number(value?.lng) || SANTA_ROSA_COPAN.lng;
     const delta = 0.012;
 
     const left = lng - delta;
@@ -85,14 +85,14 @@ function MapPickerLazy({
     const top = lat + delta;
 
     return `https://www.openstreetmap.org/export/embed.html?bbox=${left},${bottom},${right},${top}&layer=mapnik&marker=${lat},${lng}`;
-  }, [value.lat, value.lng]);
+  }, [value?.lat, value?.lng]);
 
   const openMapUrl = useMemo(() => {
-    const lat = Number(value.lat) || SANTA_ROSA_COPAN.lat;
-    const lng = Number(value.lng) || SANTA_ROSA_COPAN.lng;
+    const lat = Number(value?.lat) || SANTA_ROSA_COPAN.lat;
+    const lng = Number(value?.lng) || SANTA_ROSA_COPAN.lng;
 
     return `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=16/${lat}/${lng}`;
-  }, [value.lat, value.lng]);
+  }, [value?.lat, value?.lng]);
 
   const reverseGeocode = async (p: LatLng) => {
     try {
@@ -217,13 +217,13 @@ function MapPickerLazy({
 
       <div className="grid grid-cols-2 gap-2">
         <Input
-          value={Number(value.lat || 0).toFixed(6)}
-          onChange={(e) => setPoint(Number(e.target.value), value.lng)}
+          value={value ? Number(value.lat).toFixed(6) : ""}
+          onChange={(e) => setPoint(Number(e.target.value), value?.lng ?? SANTA_ROSA_COPAN.lng)}
           placeholder="Latitud"
         />
         <Input
-          value={Number(value.lng || 0).toFixed(6)}
-          onChange={(e) => setPoint(value.lat, Number(e.target.value))}
+          value={value ? Number(value.lng).toFixed(6) : ""}
+          onChange={(e) => setPoint(value?.lat ?? SANTA_ROSA_COPAN.lat, Number(e.target.value))}
           placeholder="Longitud"
         />
       </div>
@@ -272,6 +272,8 @@ export default function Sucursales() {
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
+  const [createLocationSelected, setCreateLocationSelected] = useState(false);
+  const [editLocationSelected, setEditLocationSelected] = useState(false);
 
   const [q, setQ] = useState("");
   const [bod, setBod] = useState("");
@@ -405,9 +407,12 @@ export default function Sucursales() {
     createForm.setFieldsValue({
       name: "",
       location: "",
-      lat: SANTA_ROSA_COPAN.lat,
-      lng: SANTA_ROSA_COPAN.lng,
+      lat: undefined,
+      lng: undefined,
+      attendance_radius_m: 75,
+      max_gps_accuracy_m: 50,
     });
+    setCreateLocationSelected(false);
     setCreateOpen(true);
   };
 
@@ -422,6 +427,7 @@ export default function Sucursales() {
 
   const openEdit = (b: Sucursal) => {
     setSelected(b);
+    setEditLocationSelected(Boolean(b.location_configured));
     editForm.setFieldsValue({
       name: b.nombre,
       RTN: b.RTN,
@@ -429,6 +435,8 @@ export default function Sucursales() {
       location: b.direccion,
       lat: b.lat,
       lng: b.lng,
+      attendance_radius_m: b.attendance_radius_m ?? 75,
+      max_gps_accuracy_m: b.max_gps_accuracy_m ?? 50,
       city: b.municipio.nombre,
       state: b.municipio.departamento.nombre_departamento
     });
@@ -460,6 +468,10 @@ export default function Sucursales() {
   const handleCreate = async () => {
     try {
       const values = await createForm.validateFields();
+      if (!createLocationSelected || !Number.isFinite(Number(values.lat)) || !Number.isFinite(Number(values.lng))) {
+        message.warning("Selecciona la ubicaciÃ³n real de la sucursal antes de crearla.");
+        return;
+      }
       setLoading(true);
       try {
         const res = await createBranch(values);
@@ -505,9 +517,16 @@ export default function Sucursales() {
 
     try {
       const values = await editForm.validateFields();
+      if (!editLocationSelected && (!selected?.location_configured)) {
+        message.warning("Selecciona la ubicaciÃ³n real de la sucursal antes de guardarla.");
+        return;
+      }
+      const valuesToSave = editLocationSelected
+        ? values
+        : { ...values, lat: undefined, lng: undefined };
       setLoading(true);
       try {
-        const res = await updateBranch(selected.id_sucursal, values);
+        const res = await updateBranch(selected.id_sucursal, valuesToSave);
 
         setBranches((prev) =>
           prev.map((b) =>
@@ -517,8 +536,8 @@ export default function Sucursales() {
                 nombre: values.name,
                 id_usuario: values.manager,
                 direccion: values.location,
-                lat: Number(values.lat),
-                lng: Number(values.lng),
+                lat: editLocationSelected ? Number(values.lat) : b.lat,
+                lng: editLocationSelected ? Number(values.lng) : b.lng,
                 id_municipio: res.data.id_municipio
               }
               : b
@@ -1149,7 +1168,9 @@ export default function Sucursales() {
             <div className="text-xs text-slate-500">
               Coordenadas:{" "}
               <span className="font-semibold text-slate-700">
-                {Number(createLat || 0).toFixed(6)}, {Number(createLng || 0).toFixed(6)}
+                {createLocationSelected
+                  ? `${Number(createLat).toFixed(6)}, ${Number(createLng).toFixed(6)}`
+                  : "Pendientes de selecciÃ³n"}
               </span>
             </div>
             <div className="text-xs text-slate-500">
@@ -1158,18 +1179,30 @@ export default function Sucursales() {
                 {`${createCity}, ${createState}`}
               </span>
             </div>
+            <div className="mt-4 border-t border-slate-200 pt-4">
+              <div className="mb-2 text-sm font-semibold text-slate-700">Ubicación para asistencia</div>
+              <div className="grid grid-cols-2 gap-2">
+                <Form.Item label="Radio permitido (m)" name="attendance_radius_m" rules={[{ required: true, type: "number", min: 1 }] }>
+                  <InputNumber min={1} className="w-full" />
+                </Form.Item>
+                <Form.Item label="Precisión GPS máxima (m)" name="max_gps_accuracy_m" rules={[{ required: true, type: "number", min: 1 }] }>
+                  <InputNumber min={1} className="w-full" />
+                </Form.Item>
+              </div>
+            </div>
           </Form>
 
           {/* ✅ Mapa solo carga cuando el modal está abierto */}
           <MapPickerLazy
             country="Honduras"
-            value={{
-              lat: Number(createLat ?? SANTA_ROSA_COPAN.lat),
-              lng: Number(createLng ?? SANTA_ROSA_COPAN.lng),
-            }}
+            value={createLocationSelected ? {
+              lat: Number(createLat),
+              lng: Number(createLng),
+            } : null}
             onChange={(p) => {
               createForm.setFieldValue("lat", p.lat);
               createForm.setFieldValue("lng", p.lng);
+              setCreateLocationSelected(true);
             }}
             address={createAddress}
             onAddressChange={(addr) => createForm.setFieldValue("location", addr)}
@@ -1257,7 +1290,9 @@ export default function Sucursales() {
             <div className="text-xs text-slate-500">
               Coordenadas:{" "}
               <span className="font-semibold text-slate-700">
-                {Number(editLat || 0).toFixed(6)}, {Number(editLng || 0).toFixed(6)}
+                {editLocationSelected
+                  ? `${Number(editLat).toFixed(6)}, ${Number(editLng).toFixed(6)}`
+                  : "Pendientes de selecciÃ³n"}
               </span>
             </div>
             <div className="text-xs text-slate-500">
@@ -1266,18 +1301,30 @@ export default function Sucursales() {
                 {`${editCity}, ${editState}`}
               </span>
             </div>
+            <div className="mt-4 border-t border-slate-200 pt-4">
+              <div className="mb-2 text-sm font-semibold text-slate-700">Ubicación para asistencia</div>
+              <div className="grid grid-cols-2 gap-2">
+                <Form.Item label="Radio permitido (m)" name="attendance_radius_m" rules={[{ required: true, type: "number", min: 1 }] }>
+                  <InputNumber min={1} className="w-full" />
+                </Form.Item>
+                <Form.Item label="Precisión GPS máxima (m)" name="max_gps_accuracy_m" rules={[{ required: true, type: "number", min: 1 }] }>
+                  <InputNumber min={1} className="w-full" />
+                </Form.Item>
+              </div>
+            </div>
           </Form>
 
           {/* ✅ En editar SIEMPRE centra donde está el marcador guardado */}
           <MapPickerLazy
             country="Honduras"
-            value={{
-              lat: Number(editLat ?? selected?.lat ?? SANTA_ROSA_COPAN.lat),
-              lng: Number(editLng ?? selected?.lng ?? SANTA_ROSA_COPAN.lng),
-            }}
+            value={editLocationSelected ? {
+              lat: Number(editLat ?? selected?.lat),
+              lng: Number(editLng ?? selected?.lng),
+            } : null}
             onChange={(p) => {
               editForm.setFieldValue("lat", p.lat);
               editForm.setFieldValue("lng", p.lng);
+              setEditLocationSelected(true);
             }}
             address={editAddress}
             onAddressChange={(addr) => editForm.setFieldValue("location", addr)}

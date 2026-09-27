@@ -23,6 +23,9 @@ export interface Sucursal {
     direccion: string;
     lat: number;
     lng: number;
+    attendance_radius_m: number;
+    max_gps_accuracy_m: number;
+    location_configured: boolean;
     municipio: Municipio;
     usuario: UsuarioSucursal;
 }

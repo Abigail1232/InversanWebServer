@@ -12,4 +12,13 @@ function getCurrentBusinessDate(now = new Date()) {
   return new Date(Date.UTC(Number(values.year), Number(values.month) - 1, Number(values.day)));
 }
 
-module.exports = { BUSINESS_TIME_ZONE, getCurrentBusinessDate };
+function getCurrentBusinessTime(now = new Date()) {
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: BUSINESS_TIME_ZONE,
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).format(now);
+}
+
+module.exports = { BUSINESS_TIME_ZONE, getCurrentBusinessDate, getCurrentBusinessTime };

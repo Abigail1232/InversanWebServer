@@ -1,6 +1,8 @@
 const prisma = require("../config/database");
 const { calculateAttendancePenalty } = require("../Services/attendancePenalty");
-const { getCurrentBusinessDate } = require("../Services/businessDate");
+const { getCurrentBusinessDate, getCurrentBusinessTime } = require("../Services/businessDate");
+const { validateLocation } = require("../Services/geofence");
+const { decryptEmbedding } = require("../Services/biometricCrypto");
 
 const PRIVILEGIOS_ASISTENCIA = {
   MARCAR: "ASI_MARCAR",
@@ -13,6 +15,35 @@ const PRIVILEGIOS_ASISTENCIA = {
 function hasPrivilege(req, privilege) {
   const privilegios = req.userPrivileges || [];
   return privilegios.includes(PRIVILEGIOS_ASISTENCIA.ALL_ACCESS) || privilegios.includes(privilege);
+}
+
+function canAdministerBiometrics(req) {
+  return hasPrivilege(req, "ASI_BIOMETRIA_ADMINISTRAR");
+}
+
+function isCodedError(error, code) {
+  return error instanceof Error && error.code === code;
+}
+
+function sendBiometricEncryptionNotConfigured(res) {
+  return res.status(503).json({
+    code: "BIOMETRIC_ENCRYPTION_NOT_CONFIGURED",
+    error: "El servicio biométrico todavía no está configurado.",
+  });
+}
+
+function sendFaceServiceUnavailable(res) {
+  return res.status(503).json({
+    code: "FACE_SERVICE_UNAVAILABLE",
+    error: "El servicio de reconocimiento facial no está disponible.",
+  });
+}
+
+function sendFaceQualityInsufficient(res) {
+  return res.status(422).json({
+    code: "FACE_QUALITY_INSUFFICIENT",
+    error: "La foto no tiene suficiente calidad. Inténtalo nuevamente.",
+  });
 }
 
 function canSelectAnyBranch(req) {
@@ -113,6 +144,16 @@ async function getEmployeeBranchIds(idUsuario) {
   });
 
   return Array.from(new Set(assignments.map((assignment) => assignment.id_sucursal)));
+}
+
+function mapSelfServiceBranch(assignment) {
+  return {
+    id: assignment.id_sucursal,
+    nombre: assignment.sucursal.nombre,
+    locationConfigured: Boolean(assignment.sucursal.location_configured),
+    radiusMeters: assignment.sucursal.attendance_radius_m,
+    maxGpsAccuracyMeters: assignment.sucursal.max_gps_accuracy_m,
+  };
 }
 
 async function getAllowedBranches(req) {
@@ -625,6 +666,321 @@ async function getMyAttendanceAccess(req) {
   return branchIds.length > 0 ? { idUsuario, branchIds } : null;
 }
 
+async function verifyMyAttendanceLocation(req, res) {
+  try {
+    const assignment = await getSelfServiceBranch(req, parseId(req.body?.id_sucursal));
+
+    if (!assignment) {
+      return res.status(200).json({ allowed: false, code: "BRANCH_NOT_ASSIGNED", reason: "BRANCH_NOT_ASSIGNED" });
+    }
+    if (assignment.multiple) {
+      return res.status(409).json({ allowed: false, code: "MULTIPLE_BRANCHES_SELECT_REQUIRED", reason: "MULTIPLE_BRANCHES_SELECT_REQUIRED", branches: assignment.branches });
+    }
+
+    const result = validateLocation(req.body || {}, assignment.sucursal);
+    if (!result.allowed) {
+      return res.json({ allowed: false, code: result.reason, reason: result.reason, accuracyMeters: result.accuracyMeters, maxAccuracyMeters: result.maxAccuracyMeters, distanceMeters: result.distanceMeters, radiusMeters: result.radiusMeters });
+    }
+
+    return res.json({
+      allowed: true,
+      branch: {
+        id: assignment.sucursal.id_sucursal,
+        nombre: assignment.sucursal.nombre,
+      },
+      distanceMeters: result.distanceMeters,
+      radiusMeters: result.radiusMeters,
+      accuracyMeters: result.accuracyMeters,
+    });
+  } catch (error) {
+    console.error("Error verificando ubicación de asistencia:", error);
+    return res.status(500).json({ error: "No se pudo verificar la ubicación" });
+  }
+}
+
+async function getMyCheckinStatus(req, res) {
+  try {
+    const assignment = await getSelfServiceBranch(req, parseId(req.query?.id_sucursal));
+    if (!assignment) return res.json({ eligible: false, code: "BRANCH_NOT_ASSIGNED", biometric: { registered: false, status: "NOT_REGISTERED" }, attendance: { alreadyMarkedToday: false } });
+    if (assignment.multiple) {
+      return res.json({
+        eligible: false,
+        code: "MULTIPLE_BRANCHES_SELECT_REQUIRED",
+        branches: assignment.branches,
+        biometric: { registered: false, status: "NOT_REGISTERED" },
+        attendance: { alreadyMarkedToday: false },
+      });
+    }
+
+    const biometric = await prisma.biometria_Facial.findUnique({ where: { id_usuario: req.user.id_usuario }, select: { activo: true } });
+    const pending = await prisma.solicitud_Biometria.findFirst({ where: { id_usuario: req.user.id_usuario, status: "PENDING" }, select: { id_solicitud: true } });
+    const attendance = await prisma.asistencia.findUnique({ where: { id_usuario_id_sucursal_fecha: { id_usuario: req.user.id_usuario, id_sucursal: assignment.id_sucursal, fecha: getCurrentBusinessDate() } }, select: { id_asistencia: true } });
+    const biometricStatus = biometric?.activo ? "ACTIVE" : biometric ? "DISABLED" : pending ? "PENDING" : "NOT_REGISTERED";
+    const locationConfigured = Boolean(assignment.sucursal.location_configured);
+    return res.json({
+      eligible: locationConfigured && biometricStatus === "ACTIVE" && !attendance,
+      branch: mapSelfServiceBranch(assignment),
+      biometric: { registered: biometricStatus === "ACTIVE", status: biometricStatus },
+      attendance: { alreadyMarkedToday: Boolean(attendance) },
+      code: attendance ? "ATTENDANCE_ALREADY_REGISTERED" : biometricStatus === "PENDING" ? "BIOMETRIC_PENDING" : biometricStatus === "NOT_REGISTERED" ? "BIOMETRIC_NOT_REGISTERED" : biometricStatus === "DISABLED" ? "BIOMETRIC_DISABLED" : !locationConfigured ? "BRANCH_LOCATION_NOT_CONFIGURED" : undefined,
+    });
+  } catch (error) {
+    console.error("Error obteniendo estado de check-in:", error);
+    return res.status(500).json({ code: "CHECKIN_STATUS_ERROR", error: "No se pudo obtener el estado de marcación" });
+  }
+}
+
+function randomActions() {
+  const options = ["BLINK", "TURN_LEFT", "TURN_RIGHT", "LOOK_CENTER"];
+  return options.sort(() => Math.random() - 0.5).slice(0, 3);
+}
+
+async function getSelfServiceBranch(req, requestedBranchId = null) {
+  const assignments = await prisma.empleado_Sucursal.findMany({
+    where: { id_usuario: req.user.id_usuario, usuario: { activo: true }, sucursal: { activo: true } },
+    include: { sucursal: true },
+  });
+
+  if (assignments.length === 0) return null;
+
+  if (requestedBranchId) {
+    return assignments.find((assignment) => assignment.id_sucursal === requestedBranchId) || null;
+  }
+
+  if (assignments.length > 1) {
+    return { multiple: true, branches: assignments.map(mapSelfServiceBranch) };
+  }
+
+  return assignments[0];
+}
+
+async function createLivenessChallenge(req, res) {
+  try {
+    const redis = require("../middleware/redisConfig");
+    if (process.env.BIOMETRIC_ENABLED === "false") return res.status(503).json({ error: "La marcación biométrica está deshabilitada" });
+    const assignment = await getSelfServiceBranch(req, parseId(req.body?.id_sucursal));
+    if (!assignment) return res.status(403).json({ code: "BRANCH_NOT_ASSIGNED", error: "El usuario no está asignado a una sucursal activa" });
+
+    if (assignment.multiple) return res.status(409).json({ code: "MULTIPLE_BRANCHES_SELECT_REQUIRED", error: "Selecciona la sucursal para marcar asistencia", branches: assignment.branches });
+
+    const biometric = await prisma.biometria_Facial.findUnique({ where: { id_usuario: req.user.id_usuario } });
+    if (!biometric || !biometric.activo) return res.status(409).json({ code: biometric ? "BIOMETRIC_DISABLED" : "BIOMETRIC_NOT_REGISTERED", error: "Tu reconocimiento facial todavía no está configurado. Contacta a un administrador." });
+
+    const location = validateLocation(req.body || {}, assignment.sucursal);
+    if (!location.allowed) return res.status(400).json({ allowed: false, code: location.reason, reason: location.reason, accuracyMeters: location.accuracyMeters, maxAccuracyMeters: location.maxAccuracyMeters, distanceMeters: location.distanceMeters, radiusMeters: location.radiusMeters });
+
+    const challengeId = require("node:crypto").randomUUID();
+    const ttl = Number(process.env.LIVENESS_CHALLENGE_TTL_SECONDS || 90);
+    const challenge = {
+      userId: req.user.id_usuario,
+      branchId: assignment.id_sucursal,
+      latitude: Number(req.body.latitude),
+      longitude: Number(req.body.longitude),
+      accuracy: location.accuracyMeters,
+      distanceMeters: location.distanceMeters,
+      actions: randomActions(),
+      used: false,
+    };
+    await redis.set(`attendance:liveness:${challengeId}`, JSON.stringify(challenge), "EX", ttl);
+    return res.json({ challenge_id: challengeId, actions: challenge.actions, expires_in_seconds: ttl });
+  } catch (error) {
+    console.error("Error generando challenge de asistencia:", error);
+    return res.status(500).json({ error: "No se pudo iniciar la verificación" });
+  }
+}
+
+async function faceCheckIn(req, res) {
+  try {
+    const redis = require("../middleware/redisConfig");
+    const { verifyFace, verifyLiveness } = require("../Services/faceService");
+    const attemptsKey = `attendance:biometric:attempts:${req.user.id_usuario}`;
+    const attempts = Number(await redis.get(attemptsKey) || 0);
+    const maxAttempts = Number(process.env.BIOMETRIC_MAX_ATTEMPTS || 5);
+    if (attempts >= maxAttempts) return res.status(429).json({ error: "Demasiados intentos fallidos. Inténtalo más tarde." });
+    const challengeId = typeof req.body?.challenge_id === "string" ? req.body.challenge_id : "";
+    const imageBase64 = typeof req.body?.image_base64 === "string" ? req.body.image_base64 : "";
+    const frames = Array.isArray(req.body?.frames) ? req.body.frames : [];
+    if (!challengeId || !imageBase64 || frames.length < 2) return res.status(400).json({ error: "Evidencia biométrica incompleta" });
+
+    const key = `attendance:liveness:${challengeId}`;
+    const rawChallenge = await redis.getdel(key);
+    if (!rawChallenge) return res.status(409).json({ code: "CHALLENGE_EXPIRED", error: "El challenge expiró o ya fue utilizado" });
+    const challenge = JSON.parse(rawChallenge);
+    if (challenge.userId !== req.user.id_usuario || challenge.used) return res.status(403).json({ code: "CHALLENGE_INVALID", error: "Challenge inválido" });
+
+    const assignment = await getSelfServiceBranch(req, challenge.branchId);
+    if (!assignment || assignment.id_sucursal !== challenge.branchId) return res.status(403).json({ code: "BRANCH_NOT_ASSIGNED", error: "La sucursal de la sesión no coincide" });
+    if (frames.length < challenge.actions.length) return res.status(400).json({ code: "LIVENESS_EVIDENCE_INCOMPLETE", error: "Evidencia de liveness incompleta" });
+    const location = validateLocation(req.body.location || {}, assignment.sucursal);
+    if (!location.allowed) return res.status(400).json({ allowed: false, code: location.reason, reason: location.reason, accuracyMeters: location.accuracyMeters, maxAccuracyMeters: location.maxAccuracyMeters, distanceMeters: location.distanceMeters, radiusMeters: location.radiusMeters });
+    if (
+      location.latitude !== challenge.latitude
+      || location.longitude !== challenge.longitude
+      || location.accuracyMeters !== challenge.accuracy
+    ) return res.status(409).json({ error: "La ubicación no coincide con el challenge" });
+
+    const biometric = await prisma.biometria_Facial.findUnique({ where: { id_usuario: req.user.id_usuario } });
+    if (!biometric || !biometric.activo) return res.status(409).json({ code: biometric ? "BIOMETRIC_DISABLED" : "BIOMETRIC_NOT_REGISTERED", error: "Tu reconocimiento facial todavía no está configurado. Contacta a un administrador." });
+
+    const liveness = await verifyLiveness(frames, challenge.actions);
+    if (!liveness.verified) {
+      await redis.incr(attemptsKey);
+      await redis.expire(attemptsKey, 900);
+      return res.status(422).json({ code: "LIVENESS_FAILED", error: "No se pudo comprobar la prueba de vida" });
+    }
+    const verification = await verifyFace(imageBase64, decryptEmbedding(biometric.embedding));
+    if (!verification.matched) {
+      await redis.incr(attemptsKey);
+      await redis.expire(attemptsKey, 900);
+      return res.status(422).json({ code: "FACE_NOT_MATCHED", error: "El rostro no coincide" });
+    }
+
+    const fecha = getCurrentBusinessDate();
+    const horaEntrada = getCurrentBusinessTime();
+    const penalty = calculateAttendancePenalty(horaEntrada);
+    const saved = await prisma.$transaction(async (transaction) => {
+      const existing = await transaction.asistencia.findUnique({
+        where: { id_usuario_id_sucursal_fecha: { id_usuario: req.user.id_usuario, id_sucursal: assignment.id_sucursal, fecha } },
+      });
+      if (existing) return null;
+      return transaction.asistencia.create({
+        data: {
+          id_usuario: req.user.id_usuario,
+          id_sucursal: assignment.id_sucursal,
+          fecha,
+          hora_entrada: horaEntrada,
+          horas_faltadas: penalty.horas_faltadas,
+          categoria: penalty.categoria,
+          attendance_method: "FACE_GPS",
+          gps_latitude: location.latitude,
+          gps_longitude: location.longitude,
+          gps_accuracy_m: location.accuracyMeters,
+          distance_from_branch_m: location.distanceMeters,
+          face_verified: true,
+          face_similarity: Number(verification.similarity),
+          liveness_verified: true,
+          verified_at: new Date(),
+          registrado_por: req.user.id_usuario,
+          actualizado_por: req.user.id_usuario,
+        },
+        include: { usuario: true, sucursal: true },
+      });
+    });
+    if (!saved) return res.status(409).json({ code: "ATTENDANCE_ALREADY_REGISTERED", error: "Tu asistencia de hoy ya fue registrada" });
+    await redis.del(attemptsKey);
+    return res.status(201).json({ mensaje: "¡Asistencia registrada correctamente!", data: mapAttendance(saved), verification: { distanceMeters: location.distanceMeters, similarity: Number(verification.similarity) } });
+  } catch (error) {
+    console.error("Error registrando asistencia biométrica:", error);
+    if (isCodedError(error, "BIOMETRIC_ENCRYPTION_NOT_CONFIGURED")) return sendBiometricEncryptionNotConfigured(res);
+    if (isCodedError(error, "FACE_SERVICE_UNAVAILABLE")) return sendFaceServiceUnavailable(res);
+    if (isCodedError(error, "FACE_QUALITY_INSUFFICIENT")) return sendFaceQualityInsufficient(res);
+    return res.status(500).json({ code: "BIOMETRIC_REQUEST_ERROR", error: "No se pudo registrar la asistencia biométrica" });
+  }
+}
+
+async function registerBiometric(req, res) {
+  try {
+    if (!canAdministerBiometrics(req)) return res.status(403).json({ error: "No tiene privilegio para administrar biometría" });
+    const idUsuario = parseId(req.body?.id_usuario);
+    const imageBase64 = typeof req.body?.image_base64 === "string" ? req.body.image_base64 : "";
+    if (!idUsuario || !imageBase64) return res.status(400).json({ error: "Empleado e imagen son obligatorios" });
+    const assignment = await prisma.empleado_Sucursal.findFirst({ where: { id_usuario: idUsuario, usuario: { activo: true }, sucursal: { activo: true } } });
+    if (!assignment) return res.status(404).json({ error: "El empleado no está asignado a una sucursal activa" });
+    const { createEmbedding } = require("../Services/faceService");
+    const result = await createEmbedding(imageBase64);
+    if (result.face_count !== 1 || !result.quality_ok) return res.status(422).json({ code: "FACE_QUALITY_INSUFFICIENT", error: "La foto no tiene suficiente calidad. Inténtalo nuevamente." });
+    const { encryptEmbedding } = require("../Services/biometricCrypto");
+    await prisma.biometria_Facial.upsert({
+      where: { id_usuario: idUsuario },
+      create: { id_usuario: idUsuario, embedding: encryptEmbedding(result.embedding), model_version: result.model_version, registered_by: req.user.id_usuario, activo: true },
+      update: { embedding: encryptEmbedding(result.embedding), model_version: result.model_version, registered_by: req.user.id_usuario, activo: true },
+    });
+    return res.status(201).json({ mensaje: "Rostro registrado correctamente" });
+  } catch (error) {
+    console.error("Error registrando biometría:", error);
+    if (isCodedError(error, "BIOMETRIC_ENCRYPTION_NOT_CONFIGURED")) return sendBiometricEncryptionNotConfigured(res);
+    if (isCodedError(error, "FACE_SERVICE_UNAVAILABLE")) return sendFaceServiceUnavailable(res);
+    if (isCodedError(error, "FACE_QUALITY_INSUFFICIENT")) return sendFaceQualityInsufficient(res);
+    return res.status(500).json({ code: "BIOMETRIC_REQUEST_ERROR", error: "No se pudo registrar el rostro" });
+  }
+}
+
+async function requestBiometricRegistration(req, res) {
+  try {
+    const assignment = await getSelfServiceBranch(req, parseId(req.body?.id_sucursal));
+    if (!assignment) return res.status(403).json({ code: "BRANCH_NOT_ASSIGNED", error: "No estás asignado a una sucursal activa" });
+    if (assignment.multiple) return res.status(409).json({ code: "MULTIPLE_BRANCHES_SELECT_REQUIRED", error: "Selecciona una sucursal para solicitar registro biomÃ©trico", branches: assignment.branches });
+    const existing = await prisma.biometria_Facial.findUnique({ where: { id_usuario: req.user.id_usuario }, select: { activo: true } });
+    if (existing?.activo) return res.status(409).json({ code: "BIOMETRIC_ACTIVE", error: "Tu reconocimiento facial ya está configurado" });
+    const pending = await prisma.solicitud_Biometria.findFirst({ where: { id_usuario: req.user.id_usuario, status: "PENDING" }, select: { id_solicitud: true } });
+    if (pending) return res.status(409).json({ code: "BIOMETRIC_PENDING", error: "Tu registro facial está pendiente de aprobación" });
+    const imageBase64 = typeof req.body?.image_base64 === "string" ? req.body.image_base64 : "";
+    if (!imageBase64) return res.status(400).json({ code: "IMAGE_REQUIRED", error: "La captura facial es obligatoria" });
+    const { createEmbedding } = require("../Services/faceService");
+    const result = await createEmbedding(imageBase64);
+    if (result.face_count !== 1 || !result.quality_ok) return res.status(422).json({ code: "FACE_QUALITY_INSUFFICIENT", error: "La foto no tiene suficiente calidad. Inténtalo nuevamente." });
+    const { encryptEmbedding } = require("../Services/biometricCrypto");
+    const request = await prisma.solicitud_Biometria.create({ data: { id_usuario: req.user.id_usuario, embedding_encrypted: encryptEmbedding(result.embedding), model_version: result.model_version, status: "PENDING" } });
+    return res.status(201).json({ id_solicitud: request.id_solicitud, status: request.status });
+  } catch (error) {
+    console.error("Error solicitando registro biométrico:", error);
+    if (isCodedError(error, "BIOMETRIC_ENCRYPTION_NOT_CONFIGURED")) return sendBiometricEncryptionNotConfigured(res);
+    if (isCodedError(error, "FACE_SERVICE_UNAVAILABLE")) return sendFaceServiceUnavailable(res);
+    if (isCodedError(error, "FACE_QUALITY_INSUFFICIENT")) return sendFaceQualityInsufficient(res);
+    return res.status(500).json({ code: "BIOMETRIC_REQUEST_ERROR", error: "No se pudo enviar la solicitud facial" });
+  }
+}
+
+async function getBiometricRequests(req, res) {
+  try {
+    if (!canAdministerBiometrics(req)) return res.status(403).json({ error: "No tiene privilegio para administrar biometría" });
+    const requests = await prisma.solicitud_Biometria.findMany({
+      where: { status: "PENDING" },
+      select: { id_solicitud: true, id_usuario: true, status: true, created_at: true, usuario: { select: { primer_nombre: true, primer_apellido: true, empleado_sucursal: { select: { sucursal: { select: { nombre: true } } } } } } },
+      orderBy: { created_at: "asc" },
+    });
+    return res.json(requests.map((request) => ({ id_solicitud: request.id_solicitud, id_usuario: request.id_usuario, empleado: `${request.usuario.primer_nombre} ${request.usuario.primer_apellido}`, sucursal: request.usuario.empleado_sucursal[0]?.sucursal.nombre || "", status: request.status, created_at: request.created_at })));
+  } catch (error) {
+    console.error("Error obteniendo solicitudes biométricas:", error);
+    return res.status(500).json({ error: "No se pudieron obtener las solicitudes" });
+  }
+}
+
+async function reviewBiometricRequest(req, res) {
+  try {
+    if (!canAdministerBiometrics(req)) return res.status(403).json({ error: "No tiene privilegio para administrar biometría" });
+    const idSolicitud = parseId(req.params.idSolicitud);
+    const decision = req.params.decision === "approve" ? "APPROVED" : req.params.decision === "reject" ? "REJECTED" : null;
+    if (!idSolicitud || !decision) return res.status(400).json({ error: "Solicitud o decisión inválida" });
+    const result = await prisma.$transaction(async (transaction) => {
+      const request = await transaction.solicitud_Biometria.findUnique({ where: { id_solicitud: idSolicitud } });
+      if (!request || request.status !== "PENDING") return null;
+      if (decision === "APPROVED") {
+        await transaction.biometria_Facial.upsert({ where: { id_usuario: request.id_usuario }, create: { id_usuario: request.id_usuario, embedding: request.embedding_encrypted, model_version: request.model_version, registered_by: req.user.id_usuario, activo: true }, update: { embedding: request.embedding_encrypted, model_version: request.model_version, registered_by: req.user.id_usuario, activo: true } });
+      }
+      return transaction.solicitud_Biometria.update({ where: { id_solicitud: idSolicitud }, data: { status: decision, reviewed_by: req.user.id_usuario, reviewed_at: new Date() }, select: { id_solicitud: true, status: true } });
+    });
+    if (!result) return res.status(409).json({ code: "BIOMETRIC_REQUEST_ALREADY_REVIEWED", error: "La solicitud ya fue revisada" });
+    return res.json(result);
+  } catch (error) {
+    console.error("Error revisando solicitud biométrica:", error);
+    return res.status(500).json({ error: "No se pudo revisar la solicitud" });
+  }
+}
+
+async function deactivateBiometric(req, res) {
+  try {
+    if (!canAdministerBiometrics(req)) return res.status(403).json({ error: "No tiene privilegio para administrar biometría" });
+    const idUsuario = parseId(req.params.idUsuario);
+    if (!idUsuario) return res.status(400).json({ error: "Empleado inválido" });
+    await prisma.biometria_Facial.updateMany({ where: { id_usuario: idUsuario }, data: { activo: false } });
+    return res.json({ mensaje: "Biometría desactivada correctamente" });
+  } catch (error) {
+    console.error("Error desactivando biometría:", error);
+    return res.status(500).json({ error: "No se pudo desactivar la biometría" });
+  }
+}
+
 async function getMyAttendanceSummary(req, res) {
   try {
     const access = await getMyAttendanceAccess(req);
@@ -695,4 +1051,13 @@ module.exports = {
   updateAttendance,
   getMyAttendanceSummary,
   getMyAttendanceRecords,
+  verifyMyAttendanceLocation,
+  getMyCheckinStatus,
+  createLivenessChallenge,
+  faceCheckIn,
+  registerBiometric,
+  deactivateBiometric,
+  requestBiometricRegistration,
+  getBiometricRequests,
+  reviewBiometricRequest,
 };

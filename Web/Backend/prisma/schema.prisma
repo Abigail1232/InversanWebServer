@@ -109,6 +109,10 @@ model Usuario {
   asistencias_trabajador    Asistencia[] @relation("AsistenciaTrabajador")
   asistencias_registradas   Asistencia[] @relation("AsistenciaRegistradaPor")
   asistencias_actualizadas  Asistencia[] @relation("AsistenciaActualizadaPor")
+  biometria_facial           Biometria_Facial?
+  biometria_registrada       Biometria_Facial[] @relation("BiometriaRegistradaPor")
+  solicitudes_biometria      Solicitud_Biometria[]
+  solicitudes_biometria_revisadas Solicitud_Biometria[] @relation("SolicitudBiometriaRevisadaPor")
 }
 
 model Rol {
@@ -148,6 +152,9 @@ model Sucursal {
   direccion    String         // location
   lat          Float          // lat (tipo)
   lng          Float          // lng (tipo)
+  attendance_radius_m Int      @default(75)
+  max_gps_accuracy_m Int       @default(50)
+  location_configured Boolean  @default(false)
 
   municipio Municipio @relation(fields: [id_municipio], references: [id_municipio])
   usuario   Usuario?  @relation(fields: [id_usuario], references: [id_usuario])
@@ -202,6 +209,15 @@ model Asistencia {
   actualizado_por  Int?
   creado_en        DateTime @default(now()) @db.Timestamp(0)
   actualizado_en   DateTime @updatedAt @db.Timestamp(0)
+  attendance_method String   @default("MANUAL") @db.VarChar(20)
+  gps_latitude     Float?
+  gps_longitude    Float?
+  gps_accuracy_m   Float?
+  distance_from_branch_m Float?
+  face_verified    Boolean  @default(false)
+  face_similarity  Float?
+  liveness_verified Boolean @default(false)
+  verified_at      DateTime? @db.Timestamp(0)
 
   usuario           Usuario  @relation("AsistenciaTrabajador", fields: [id_usuario], references: [id_usuario])
   sucursal          Sucursal @relation(fields: [id_sucursal], references: [id_sucursal])
@@ -211,6 +227,37 @@ model Asistencia {
   @@unique([id_usuario, id_sucursal, fecha])
   @@index([id_sucursal, fecha])
   @@index([id_usuario, fecha])
+}
+
+model Biometria_Facial {
+  id_biometria  Int      @id @default(autoincrement())
+  id_usuario    Int      @unique
+  embedding     String   @db.Text
+  model_version String   @db.VarChar(80)
+  activo        Boolean  @default(true)
+  registered_by Int?
+  last_verified_at DateTime? @db.Timestamp(0)
+  created_at    DateTime @default(now()) @db.Timestamp(0)
+  updated_at    DateTime @updatedAt @db.Timestamp(0)
+
+  usuario       Usuario  @relation(fields: [id_usuario], references: [id_usuario])
+  registrador   Usuario? @relation("BiometriaRegistradaPor", fields: [registered_by], references: [id_usuario])
+}
+
+model Solicitud_Biometria {
+  id_solicitud       Int      @id @default(autoincrement())
+  id_usuario         Int
+  embedding_encrypted String  @db.Text
+  model_version      String   @db.VarChar(80)
+  status             String   @db.VarChar(20)
+  created_at         DateTime @default(now()) @db.Timestamp(0)
+  reviewed_at        DateTime? @db.Timestamp(0)
+  reviewed_by        Int?
+
+  usuario            Usuario  @relation(fields: [id_usuario], references: [id_usuario])
+  revisor            Usuario? @relation("SolicitudBiometriaRevisadaPor", fields: [reviewed_by], references: [id_usuario])
+
+  @@index([id_usuario, status])
 }
 
 model Visita_Usuario {
