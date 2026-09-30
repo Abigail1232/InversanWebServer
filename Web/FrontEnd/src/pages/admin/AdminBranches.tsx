@@ -410,7 +410,7 @@ export default function Sucursales() {
       lat: undefined,
       lng: undefined,
       attendance_radius_m: 75,
-      max_gps_accuracy_m: 50,
+      max_gps_accuracy_m: 145,
     });
     setCreateLocationSelected(false);
     setCreateOpen(true);
@@ -436,7 +436,7 @@ export default function Sucursales() {
       lat: b.lat,
       lng: b.lng,
       attendance_radius_m: b.attendance_radius_m ?? 75,
-      max_gps_accuracy_m: b.max_gps_accuracy_m ?? 50,
+      max_gps_accuracy_m: b.max_gps_accuracy_m ?? 145,
       city: b.municipio.nombre,
       state: b.municipio.departamento.nombre_departamento
     });
@@ -1185,7 +1185,7 @@ export default function Sucursales() {
                 <Form.Item label="Radio permitido (m)" name="attendance_radius_m" rules={[{ required: true, type: "number", min: 1 }] }>
                   <InputNumber min={1} className="w-full" />
                 </Form.Item>
-                <Form.Item label="Precisión GPS máxima (m)" name="max_gps_accuracy_m" rules={[{ required: true, type: "number", min: 1 }] }>
+                <Form.Item label="Precisión máxima GPS permitida (m)" name="max_gps_accuracy_m" rules={[{ required: true, type: "number", min: 1 }] }>
                   <InputNumber min={1} className="w-full" />
                 </Form.Item>
               </div>
@@ -1307,7 +1307,7 @@ export default function Sucursales() {
                 <Form.Item label="Radio permitido (m)" name="attendance_radius_m" rules={[{ required: true, type: "number", min: 1 }] }>
                   <InputNumber min={1} className="w-full" />
                 </Form.Item>
-                <Form.Item label="Precisión GPS máxima (m)" name="max_gps_accuracy_m" rules={[{ required: true, type: "number", min: 1 }] }>
+                <Form.Item label="Precisión máxima GPS permitida (m)" name="max_gps_accuracy_m" rules={[{ required: true, type: "number", min: 1 }] }>
                   <InputNumber min={1} className="w-full" />
                 </Form.Item>
               </div>

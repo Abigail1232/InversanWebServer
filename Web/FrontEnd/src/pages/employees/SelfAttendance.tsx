@@ -184,8 +184,11 @@ export default function SelfAttendance() {
   const gpsInaccurateDescription = status === "GPS_INACCURATE" ? (
     <div className="space-y-3">
       <div>
-        <div>Precisión obtenida: <strong>{reportedAccuracy !== null && reportedAccuracy !== undefined ? `${Math.round(reportedAccuracy)} m` : "No disponible"}</strong></div>
-        <div>Precisión requerida: <strong>{requiredAccuracy !== null && requiredAccuracy !== undefined ? `${Math.round(requiredAccuracy)} m` : "la configurada"}</strong></div>
+        La ubicación fue encontrada, pero su precisión actual es de{" "}
+        <strong>{reportedAccuracy !== null && reportedAccuracy !== undefined ? `${Math.round(reportedAccuracy)} m` : "No disponible"}</strong>.
+        {" "}Esta sucursal requiere{" "}
+        <strong>{requiredAccuracy !== null && requiredAccuracy !== undefined ? `${Math.round(requiredAccuracy)} m` : "la configurada"}</strong>{" "}
+        o mejor.
       </div>
       <Button size="small" onClick={() => void start()}>Intentar nuevamente</Button>
     </div>

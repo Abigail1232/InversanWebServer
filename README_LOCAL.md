@@ -52,4 +52,4 @@ No existe aprobación manual de la ubicación actual del empleado. En cada marca
 
 Las computadoras portátiles generalmente no poseen GPS físico. Chrome/Windows puede obtener ubicación mediante Wi-Fi o red y la precisión (`accuracy`, incertidumbre de la medición) puede ser mucho peor que en un teléfono, aunque la distancia calculada a la sucursal (`distanceMeters`) sea pequeña.
 
-Para pruebas locales puede aumentarse temporalmente `max_gps_accuracy_m` de la sucursal. Para producción se recomienda calibrarlo usando celulares reales con GPS y HTTPS, requerido por `geolocation` y `getUserMedia`.
+El valor estandar de `max_gps_accuracy_m` es 145 m. Este ajuste aumenta la incertidumbre maxima aceptada por la variabilidad real observada en navegadores y dispositivos; no mejora la precision fisica del GPS ni modifica el radio de asistencia. Para produccion se recomienda calibrarlo usando celulares reales con GPS y HTTPS, requerido por `geolocation` y `getUserMedia`.
