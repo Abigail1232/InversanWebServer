@@ -9,7 +9,6 @@ const {
 const { validateLocation } = require("../Services/geofence");
 const { decryptEmbedding } = require("../Services/biometricCrypto");
 const { CURRENT_FACE_MODEL_VERSION } = require("../Services/faceModel");
-const { randomInt } = require("node:crypto");
 
 const PRIVILEGIOS_ASISTENCIA = {
   MARCAR: "ASI_MARCAR",
@@ -751,14 +750,7 @@ async function getMyCheckinStatus(req, res) {
   }
 }
 
-function randomActions() {
-  const options = ["BLINK", "TURN_LEFT", "TURN_RIGHT", "LOOK_CENTER"];
-  for (let index = options.length - 1; index > 0; index -= 1) {
-    const swapIndex = randomInt(index + 1);
-    [options[index], options[swapIndex]] = [options[swapIndex], options[index]];
-  }
-  return options.slice(0, 3);
-}
+const PASSIVE_LIVENESS_ACTIONS = ["PASSIVE_MOTION"];
 
 function isBiometricEnabled() {
   return process.env.BIOMETRIC_ENABLED === "true";
@@ -811,11 +803,12 @@ async function createLivenessChallenge(req, res) {
       longitude: Number(req.body.longitude),
       accuracy: location.accuracyMeters,
       distanceMeters: location.distanceMeters,
-      actions: randomActions(),
+      actions: PASSIVE_LIVENESS_ACTIONS,
+      livenessMode: "PASSIVE_MOTION",
       used: false,
     };
     await redis.set(`attendance:liveness:${challengeId}`, JSON.stringify(challenge), "EX", ttl);
-    return res.json({ challenge_id: challengeId, actions: challenge.actions, expires_in_seconds: ttl });
+    return res.json({ challenge_id: challengeId, actions: challenge.actions, liveness_mode: challenge.livenessMode, expires_in_seconds: ttl });
   } catch (error) {
     console.error("Error generando challenge de asistencia:", error);
     return res.status(500).json({ error: "No se pudo iniciar la verificación" });
@@ -844,7 +837,8 @@ async function faceCheckIn(req, res) {
 
     const assignment = await getSelfServiceBranch(req, challenge.branchId);
     if (!assignment || assignment.id_sucursal !== challenge.branchId) return res.status(403).json({ code: "BRANCH_NOT_ASSIGNED", error: "La sucursal de la sesión no coincide" });
-    if (frames.length < challenge.actions.length) return res.status(400).json({ code: "LIVENESS_EVIDENCE_INCOMPLETE", error: "Evidencia de liveness incompleta" });
+    const livenessActions = Array.isArray(challenge.actions) && challenge.actions.length ? challenge.actions : PASSIVE_LIVENESS_ACTIONS;
+    if (frames.length < 2) return res.status(400).json({ code: "LIVENESS_EVIDENCE_INCOMPLETE", error: "Evidencia de liveness incompleta" });
     const location = validateLocation(req.body.location || {}, assignment.sucursal);
     if (!location.allowed) return res.status(400).json({ allowed: false, code: location.reason, reason: location.reason, accuracyMeters: location.accuracyMeters, maxAccuracyMeters: location.maxAccuracyMeters, distanceMeters: location.distanceMeters, radiusMeters: location.radiusMeters });
     if (
@@ -858,7 +852,7 @@ async function faceCheckIn(req, res) {
 
     if (biometric?.activo && biometric.model_version !== CURRENT_FACE_MODEL_VERSION) throw biometricReenrollmentRequired();
 
-    const liveness = await verifyLiveness(frames, challenge.actions);
+    const liveness = await verifyLiveness(frames, livenessActions);
     if (!liveness.verified) {
       await redis.incr(attemptsKey);
       await redis.expire(attemptsKey, 900);

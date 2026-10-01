@@ -18,6 +18,15 @@ INSUFFICIENT_RIGHT_TURN = FaceEvidence(eye_aspect_ratio=0.27, yaw=-0.03)
 OFF_CENTER = FaceEvidence(eye_aspect_ratio=0.27, yaw=0.06)
 
 
+def passive_evidence(offset: float = 0.0) -> FaceEvidence:
+    landmarks = [(0.0, 0.0) for _ in range(478)]
+    for index in (1, 33, 61, 133, 152, 199, 263, 291, 362, 454):
+        landmarks[index] = (0.2 + offset, 0.3)
+    landmarks[234] = (-0.5, 0.0)
+    landmarks[454] = (0.5, 0.0)
+    return FaceEvidence(eye_aspect_ratio=0.27, yaw=0.0, landmarks=tuple(landmarks))
+
+
 class LivenessTests(unittest.TestCase):
     def test_accepts_valid_requested_sequence(self):
         evidence = [CLOSED_CENTER, LEFT_TURN, RIGHT_TURN, OPEN_CENTER]
@@ -67,6 +76,19 @@ class LivenessTests(unittest.TestCase):
         frames = [np.zeros((40, 40, 3), dtype=np.uint8) for _ in range(2)]
         extracted = iter([CLOSED_CENTER, OPEN_CENTER])
         self.assertTrue(validate_frames(frames, ["BLINK"], feature_extractor=lambda _: next(extracted)))
+
+    def test_accepts_passive_motion_with_minimal_landmark_change(self):
+        evidence = [passive_evidence(0.0), passive_evidence(0.02)]
+        self.assertTrue(validate_evidence_sequence(evidence, ["PASSIVE_MOTION"]))
+
+    def test_rejects_passive_motion_when_face_is_static(self):
+        evidence = [passive_evidence(0.0), passive_evidence(0.0), passive_evidence(0.0)]
+        self.assertFalse(validate_evidence_sequence(evidence, ["PASSIVE_MOTION"]))
+
+    def test_validate_frames_accepts_passive_motion_from_extracted_landmarks(self):
+        frames = [np.zeros((40, 40, 3), dtype=np.uint8) for _ in range(3)]
+        extracted = iter([passive_evidence(0.0), passive_evidence(0.015), passive_evidence(0.02)])
+        self.assertTrue(validate_frames(frames, ["PASSIVE_MOTION"], feature_extractor=lambda _: next(extracted)))
 
 
 if __name__ == "__main__":

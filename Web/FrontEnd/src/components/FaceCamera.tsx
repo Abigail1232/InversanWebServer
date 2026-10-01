@@ -1,6 +1,14 @@
 import { FaceLandmarker, FilesetResolver } from "@mediapipe/tasks-vision";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { Alert, Button, Spin } from "antd";
+import {
+  AUTO_CAPTURE_FRAME_COUNT,
+  AUTO_CAPTURE_FRAME_INTERVAL_MS,
+  PASSIVE_LIVENESS_WINDOW_MS,
+  buildPassiveLivenessFrames,
+  shouldAutoCapturePassiveMotion,
+  type LandmarkSample,
+} from "./faceMotion";
 
 const LANDMARKER_WASM = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1/wasm";
 const LANDMARKER_MODEL = "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task";
@@ -13,16 +21,17 @@ export const FACE_CAPTURE_MAX_WIDTH = 720;
 export const FACE_CAPTURE_JPEG_QUALITY = 0.76;
 const ANALYSIS_INTERVAL_MS = 140;
 
-export type FaceCameraMode = "enrollment" | "liveness";
+export type FaceCameraMode = "enrollment" | "liveness" | "attendance-auto";
 export type FacePosition = "NO_FACE" | "MULTIPLE_FACES" | "TOO_FAR" | "TOO_CLOSE" | "MOVE_LEFT" | "MOVE_RIGHT" | "MOVE_UP" | "MOVE_DOWN" | "GOOD_POSITION" | "HOLD_STILL" | "CAPTURED";
-export type FaceCameraHandle = { capture: () => string | null };
+export type FaceCameraHandle = { capture: () => string | null; captureFrames: () => Promise<string[]> };
 
 type Props = {
   mode?: FaceCameraMode;
   instruction?: string;
   onError?: (message: string) => void;
   autoCapture?: boolean;
-  onAutoCapture?: () => void;
+  autoCaptureEnabled?: boolean;
+  onAutoCapture?: (frames: string[]) => void | Promise<void>;
   onEnrollmentConfirm?: (image: string) => Promise<void>;
 };
 
@@ -40,20 +49,40 @@ const positionMessages: Record<FacePosition, string> = {
   CAPTURED: "Foto capturada.",
 };
 
-const FaceCamera = forwardRef<FaceCameraHandle, Props>(function FaceCamera({ mode = "liveness", instruction, onError, autoCapture = false, onAutoCapture, onEnrollmentConfirm }, ref) {
+const automaticPositionMessages: Record<FacePosition, string> = {
+  NO_FACE: "Coloca tu rostro dentro del marco",
+  MULTIPLE_FACES: "Debe aparecer una sola persona frente a la cámara.",
+  TOO_FAR: "Coloca tu rostro dentro del marco",
+  TOO_CLOSE: "Coloca tu rostro dentro del marco",
+  MOVE_LEFT: "Coloca tu rostro dentro del marco",
+  MOVE_RIGHT: "Coloca tu rostro dentro del marco",
+  MOVE_UP: "Coloca tu rostro dentro del marco",
+  MOVE_DOWN: "Coloca tu rostro dentro del marco",
+  GOOD_POSITION: "Rostro detectado",
+  HOLD_STILL: "Rostro detectado",
+  CAPTURED: "Verificando identidad...",
+};
+
+const wait = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
+
+const FaceCamera = forwardRef<FaceCameraHandle, Props>(function FaceCamera({ mode = "liveness", instruction, onError, autoCapture = false, autoCaptureEnabled = true, onAutoCapture, onEnrollmentConfirm }, ref) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const landmarkerRef = useRef<FaceLandmarker | null>(null);
   const analysisFrameRef = useRef<number | null>(null);
   const lastAnalysisRef = useRef(0);
   const stableSinceRef = useRef<number | null>(null);
+  const landmarkSamplesRef = useRef<LandmarkSample[]>([]);
+  const captureTriggeredRef = useRef(false);
+  const captureInProgressRef = useRef(false);
+  const baselineFrameRef = useRef<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [position, setPosition] = useState<FacePosition>("NO_FACE");
   const [preview, setPreview] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
-  const shouldAnalyze = mode === "enrollment" || autoCapture;
+  const shouldAnalyze = mode === "enrollment" || mode === "attendance-auto" || autoCapture;
 
   const stopStream = useCallback(() => {
     streamRef.current?.getTracks().forEach((track) => track.stop());
@@ -74,7 +103,17 @@ const FaceCamera = forwardRef<FaceCameraHandle, Props>(function FaceCamera({ mod
     return canvas.toDataURL("image/jpeg", FACE_CAPTURE_JPEG_QUALITY);
   }, []);
 
-  useImperativeHandle(ref, () => ({ capture: captureCurrentFrame }), [captureCurrentFrame]);
+  const captureFrameSequence = useCallback(async () => {
+    const frames: string[] = [];
+    for (let index = 0; index < AUTO_CAPTURE_FRAME_COUNT; index += 1) {
+      const frame = captureCurrentFrame();
+      if (frame) frames.push(frame);
+      if (index < AUTO_CAPTURE_FRAME_COUNT - 1) await wait(AUTO_CAPTURE_FRAME_INTERVAL_MS);
+    }
+    return frames;
+  }, [captureCurrentFrame]);
+
+  useImperativeHandle(ref, () => ({ capture: captureCurrentFrame, captureFrames: captureFrameSequence }), [captureCurrentFrame, captureFrameSequence]);
 
   const openCamera = useCallback(async () => {
     setLoading(true);
@@ -153,7 +192,12 @@ const FaceCamera = forwardRef<FaceCameraHandle, Props>(function FaceCamera({ mod
       if (!video || !landmarker || video.readyState < 2 || !video.videoWidth) return;
       const result = landmarker.detectForVideo(video, now);
       if (result.faceLandmarks.length !== 1) {
-        stableSinceRef.current = null;
+        if (!captureInProgressRef.current) {
+          stableSinceRef.current = null;
+          landmarkSamplesRef.current = [];
+          captureTriggeredRef.current = false;
+          baselineFrameRef.current = null;
+        }
         setPosition(result.faceLandmarks.length > 1 ? "MULTIPLE_FACES" : "NO_FACE");
         return;
       }
@@ -175,7 +219,12 @@ const FaceCamera = forwardRef<FaceCameraHandle, Props>(function FaceCamera({ mod
       else if (centerY < 0.5 - CENTER_TOLERANCE) nextPosition = "MOVE_DOWN";
       else if (centerY > 0.5 + CENTER_TOLERANCE) nextPosition = "MOVE_UP";
       if (nextPosition !== "GOOD_POSITION") {
-        stableSinceRef.current = null;
+        if (!captureInProgressRef.current) {
+          stableSinceRef.current = null;
+          landmarkSamplesRef.current = [];
+          captureTriggeredRef.current = false;
+          baselineFrameRef.current = null;
+        }
         setCountdown(null);
         setPosition(nextPosition);
         return;
@@ -184,9 +233,50 @@ const FaceCamera = forwardRef<FaceCameraHandle, Props>(function FaceCamera({ mod
       stableSinceRef.current = stableSince;
       setPosition("HOLD_STILL");
       const elapsed = now - stableSince;
+      if (mode === "attendance-auto") {
+        if (!autoCaptureEnabled) {
+          if (!captureInProgressRef.current) {
+            landmarkSamplesRef.current = [];
+            captureTriggeredRef.current = false;
+            baselineFrameRef.current = null;
+          }
+          return;
+        }
+        if (!baselineFrameRef.current && !captureInProgressRef.current) {
+          baselineFrameRef.current = captureCurrentFrame();
+        }
+        landmarkSamplesRef.current = [
+          ...landmarkSamplesRef.current.filter((sample) => now - sample.at <= PASSIVE_LIVENESS_WINDOW_MS),
+          { at: now, points: landmarks.map((point) => ({ x: point.x, y: point.y })) },
+        ];
+        if (shouldAutoCapturePassiveMotion({
+          samples: landmarkSamplesRef.current,
+          elapsedMs: elapsed,
+          autoCaptureEnabled,
+          captureTriggered: captureTriggeredRef.current,
+          captureInProgress: captureInProgressRef.current,
+        })) {
+          captureTriggeredRef.current = true;
+          captureInProgressRef.current = true;
+          setPosition("CAPTURED");
+          const baselineFrame = baselineFrameRef.current;
+          const motionFrame = captureCurrentFrame();
+          void wait(AUTO_CAPTURE_FRAME_INTERVAL_MS).then(() => {
+            const finalFrame = captureCurrentFrame();
+            const frames = buildPassiveLivenessFrames(baselineFrame, motionFrame, finalFrame);
+            if (frames.length === AUTO_CAPTURE_FRAME_COUNT) void onAutoCapture?.(frames);
+            else {
+              captureTriggeredRef.current = false;
+              captureInProgressRef.current = false;
+              baselineFrameRef.current = null;
+            }
+          });
+        }
+        return;
+      }
       if (elapsed >= STABILITY_DURATION_MS) {
         if (mode === "enrollment") captureEnrollmentPreview();
-        else onAutoCapture?.();
+        else void captureFrameSequence().then((frames) => void onAutoCapture?.(frames));
       }
       else setCountdown(Math.max(1, Math.ceil((STABILITY_DURATION_MS - elapsed) / 400)));
     };
@@ -195,13 +285,17 @@ const FaceCamera = forwardRef<FaceCameraHandle, Props>(function FaceCamera({ mod
       if (analysisFrameRef.current !== null) window.cancelAnimationFrame(analysisFrameRef.current);
       analysisFrameRef.current = null;
     };
-  }, [captureEnrollmentPreview, mode, onAutoCapture, preview, shouldAnalyze]);
+  }, [autoCaptureEnabled, captureCurrentFrame, captureEnrollmentPreview, captureFrameSequence, mode, onAutoCapture, preview, shouldAnalyze]);
 
   const handleRetake = () => {
     setPreview(null);
     setError("");
     setPosition("NO_FACE");
     stableSinceRef.current = null;
+    landmarkSamplesRef.current = [];
+    captureTriggeredRef.current = false;
+    captureInProgressRef.current = false;
+    baselineFrameRef.current = null;
     void openCamera();
   };
 
@@ -234,7 +328,7 @@ const FaceCamera = forwardRef<FaceCameraHandle, Props>(function FaceCamera({ mod
         {error && <Alert className="absolute inset-x-3 top-3 z-30" type="error" showIcon title={error} />}
         <video ref={videoRef} autoPlay muted playsInline className="h-full w-full object-cover [transform:rotateY(180deg)]" />
         <div className={`pointer-events-none absolute left-1/2 top-1/2 aspect-[3/4] w-[46%] -translate-x-1/2 -translate-y-1/2 rounded-[50%] border-4 ${accent} shadow-[0_0_0_9999px_rgba(2,6,23,0.48)] transition-colors`} />
-        <div className="absolute inset-x-0 bottom-0 z-10 flex flex-col items-center gap-1 bg-slate-950/60 px-3 py-3 text-center text-sm text-white"><span>{mode === "enrollment" ? positionMessages[position] : instruction || "Mira hacia la cámara y sigue las indicaciones."}</span>{mode === "enrollment" && countdown !== null && <span className="text-xl font-bold text-emerald-300">{countdown}</span>}</div>
+        <div className="absolute inset-x-0 bottom-0 z-10 flex flex-col items-center gap-1 bg-slate-950/60 px-3 py-3 text-center text-sm text-white"><span>{mode === "enrollment" ? positionMessages[position] : mode === "attendance-auto" ? instruction || automaticPositionMessages[position] : instruction || "Mira hacia la cámara."}</span>{mode === "enrollment" && countdown !== null && <span className="text-xl font-bold text-emerald-300">{countdown}</span>}</div>
       </div>}
     </div>
   );

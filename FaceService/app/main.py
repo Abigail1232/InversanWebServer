@@ -63,8 +63,12 @@ def liveness(request: LivenessRequest):
         frames = [engine.decode(frame) for frame in request.frames]
     except (ValueError, RuntimeError) as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
+    verified = validate_frames(frames, request.actions)
+    passive = request.actions == ["PASSIVE_MOTION"]
     return {
-        "verified": validate_frames(frames, request.actions),
+        "verified": verified,
+        "passed": verified,
+        "reason": "PASSIVE_FACE_MOTION" if verified and passive else "LIVENESS_FAILED" if passive else None,
         "actions_requested": request.actions,
-        "mode": "LANDMARK_SEMANTIC_V1",
+        "mode": "PASSIVE_MOTION" if passive else "LANDMARK_SEMANTIC_V1",
     }

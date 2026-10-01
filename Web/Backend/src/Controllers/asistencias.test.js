@@ -1016,4 +1016,237 @@ test("attendance controller enforces branch and self-service access", async (t) 
     if (previousKey === undefined) delete process.env.BIOMETRIC_ENCRYPTION_KEY;
     else process.env.BIOMETRIC_ENCRYPTION_KEY = previousKey;
   });
+
+  await t.test("self check-in challenge requests passive motion liveness", async () => {
+    const previousBiometric = process.env.BIOMETRIC_ENABLED;
+    process.env.BIOMETRIC_ENABLED = "true";
+
+    let storedChallenge;
+    const redisPath = require.resolve("../middleware/redisConfig");
+    const redisModule = new Module(redisPath);
+    redisModule.filename = redisPath;
+    redisModule.loaded = true;
+    redisModule.exports = {
+      set: async (_key, value) => {
+        storedChallenge = JSON.parse(value);
+        return "OK";
+      },
+    };
+    require.cache[redisPath] = redisModule;
+
+    prisma.empleado_Sucursal.findMany = async () => [{
+      id_sucursal: 3,
+      sucursal: {
+        id_sucursal: 3,
+        nombre: "Central",
+        activo: true,
+        location_configured: true,
+        lat: 14.1,
+        lng: -87.2,
+        attendance_radius_m: 75,
+        max_gps_accuracy_m: 50,
+      },
+    }];
+    prisma.biometria_Facial.findUnique = async () => ({ id_usuario: 12, activo: true });
+
+    const res = createResponse();
+    await attendanceController.createLivenessChallenge(
+      { user: { id_usuario: 12 }, body: { latitude: 14.1, longitude: -87.2, accuracy: 10 } },
+      res,
+    );
+
+    assert.equal(res.statusCode, 200);
+    assert.deepEqual(res.body.actions, ["PASSIVE_MOTION"]);
+    assert.equal(res.body.liveness_mode, "PASSIVE_MOTION");
+    assert.deepEqual(storedChallenge.actions, ["PASSIVE_MOTION"]);
+
+    if (previousBiometric === undefined) delete process.env.BIOMETRIC_ENABLED;
+    else process.env.BIOMETRIC_ENABLED = previousBiometric;
+  });
+
+  await t.test("invalid GPS consumes challenge and does not call liveness or face match", async () => {
+    const previousBiometric = process.env.BIOMETRIC_ENABLED;
+    const previousKey = process.env.BIOMETRIC_ENCRYPTION_KEY;
+    process.env.BIOMETRIC_ENABLED = "true";
+    process.env.BIOMETRIC_ENCRYPTION_KEY = "test-only-key";
+
+    let getdelCalls = 0;
+    const redisPath = require.resolve("../middleware/redisConfig");
+    const redisModule = new Module(redisPath);
+    redisModule.filename = redisPath;
+    redisModule.loaded = true;
+    redisModule.exports = {
+      get: async () => "0",
+      getdel: async () => {
+        getdelCalls += 1;
+        return JSON.stringify({
+          userId: 12,
+          branchId: 3,
+          latitude: 14.1,
+          longitude: -87.2,
+          accuracy: 10,
+          distanceMeters: 5,
+          actions: ["PASSIVE_MOTION"],
+          used: false,
+        });
+      },
+    };
+    require.cache[redisPath] = redisModule;
+
+    let faceServiceCalled = false;
+    const faceServicePath = require.resolve("../Services/faceService");
+    const faceServiceModule = new Module(faceServicePath);
+    faceServiceModule.filename = faceServicePath;
+    faceServiceModule.loaded = true;
+    faceServiceModule.exports = {
+      CURRENT_FACE_MODEL_VERSION: "opencv-sface-2021dec",
+      verifyLiveness: async () => {
+        faceServiceCalled = true;
+        return { verified: true };
+      },
+      verifyFace: async () => {
+        faceServiceCalled = true;
+        return { matched: true, similarity: 0.99 };
+      },
+    };
+    require.cache[faceServicePath] = faceServiceModule;
+
+    const { encryptEmbedding } = require("../Services/biometricCrypto");
+    prisma.empleado_Sucursal.findMany = async () => [{
+      id_sucursal: 3,
+      sucursal: {
+        id_sucursal: 3,
+        nombre: "Central",
+        activo: true,
+        location_configured: true,
+        lat: 14.1,
+        lng: -87.2,
+        attendance_radius_m: 75,
+        max_gps_accuracy_m: 50,
+      },
+    }];
+    prisma.biometria_Facial.findUnique = async () => ({
+      id_usuario: 12,
+      activo: true,
+      model_version: "opencv-sface-2021dec",
+      embedding: encryptEmbedding([0.1, 0.2]),
+    });
+
+    const res = createResponse();
+    await attendanceController.faceCheckIn(
+      {
+        user: { id_usuario: 12 },
+        body: {
+          challenge_id: "challenge-gps",
+          image_base64: "data:image/jpeg;base64,abc",
+          frames: ["frame-1", "frame-2", "frame-3"],
+          location: { latitude: 14.1, longitude: -87.2, accuracy: 500 },
+        },
+      },
+      res,
+    );
+
+    assert.equal(res.statusCode, 400);
+    assert.equal(res.body.code, "GPS_INACCURATE");
+    assert.equal(getdelCalls, 1);
+    assert.equal(faceServiceCalled, false);
+
+    if (previousBiometric === undefined) delete process.env.BIOMETRIC_ENABLED;
+    else process.env.BIOMETRIC_ENABLED = previousBiometric;
+    if (previousKey === undefined) delete process.env.BIOMETRIC_ENCRYPTION_KEY;
+    else process.env.BIOMETRIC_ENCRYPTION_KEY = previousKey;
+  });
+
+  await t.test("wrong face after passive liveness does not register attendance", async () => {
+    const previousBiometric = process.env.BIOMETRIC_ENABLED;
+    const previousKey = process.env.BIOMETRIC_ENCRYPTION_KEY;
+    process.env.BIOMETRIC_ENABLED = "true";
+    process.env.BIOMETRIC_ENCRYPTION_KEY = "test-only-key";
+
+    const redisPath = require.resolve("../middleware/redisConfig");
+    const redisModule = new Module(redisPath);
+    redisModule.filename = redisPath;
+    redisModule.loaded = true;
+    redisModule.exports = {
+      get: async () => "0",
+      getdel: async () => JSON.stringify({
+        userId: 12,
+        branchId: 3,
+        latitude: 14.1,
+        longitude: -87.2,
+        accuracy: 10,
+        distanceMeters: 5,
+        actions: ["PASSIVE_MOTION"],
+        used: false,
+      }),
+      incr: async () => 1,
+      expire: async () => 1,
+    };
+    require.cache[redisPath] = redisModule;
+
+    let livenessActions;
+    const faceServicePath = require.resolve("../Services/faceService");
+    const faceServiceModule = new Module(faceServicePath);
+    faceServiceModule.filename = faceServicePath;
+    faceServiceModule.loaded = true;
+    faceServiceModule.exports = {
+      CURRENT_FACE_MODEL_VERSION: "opencv-sface-2021dec",
+      verifyLiveness: async (_frames, actions) => {
+        livenessActions = actions;
+        return { verified: true, reason: "PASSIVE_FACE_MOTION" };
+      },
+      verifyFace: async () => ({ matched: false, similarity: 0.12 }),
+    };
+    require.cache[faceServicePath] = faceServiceModule;
+
+    const { encryptEmbedding } = require("../Services/biometricCrypto");
+    prisma.empleado_Sucursal.findMany = async () => [{
+      id_sucursal: 3,
+      sucursal: {
+        id_sucursal: 3,
+        nombre: "Central",
+        activo: true,
+        location_configured: true,
+        lat: 14.1,
+        lng: -87.2,
+        attendance_radius_m: 75,
+        max_gps_accuracy_m: 50,
+      },
+    }];
+    prisma.biometria_Facial.findUnique = async () => ({
+      id_usuario: 12,
+      activo: true,
+      model_version: "opencv-sface-2021dec",
+      embedding: encryptEmbedding([0.1, 0.2]),
+    });
+    let attendanceCreated = false;
+    prisma.asistencia.create = async () => {
+      attendanceCreated = true;
+      return {};
+    };
+
+    const res = createResponse();
+    await attendanceController.faceCheckIn(
+      {
+        user: { id_usuario: 12 },
+        body: {
+          challenge_id: "challenge-face",
+          image_base64: "data:image/jpeg;base64,abc",
+          frames: ["frame-1", "frame-2", "frame-3"],
+          location: { latitude: 14.1, longitude: -87.2, accuracy: 10 },
+        },
+      },
+      res,
+    );
+
+    assert.equal(res.statusCode, 422);
+    assert.equal(res.body.code, "FACE_NOT_MATCHED");
+    assert.deepEqual(livenessActions, ["PASSIVE_MOTION"]);
+    assert.equal(attendanceCreated, false);
+
+    if (previousBiometric === undefined) delete process.env.BIOMETRIC_ENABLED;
+    else process.env.BIOMETRIC_ENABLED = previousBiometric;
+    if (previousKey === undefined) delete process.env.BIOMETRIC_ENCRYPTION_KEY;
+    else process.env.BIOMETRIC_ENCRYPTION_KEY = previousKey;
+  });
 });
