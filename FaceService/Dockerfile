@@ -4,13 +4,15 @@ ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 WORKDIR /app
 
 RUN apt-get update \
-	&& apt-get install -y --no-install-recommends build-essential libglib2.0-0 libgl1 libstdc++6 \
-	&& g++ --version \
+	&& apt-get install -y --no-install-recommends ca-certificates libglib2.0-0 libgl1 libstdc++6 \
 	&& rm -rf /var/lib/apt/lists/*
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt \
-	&& apt-get purge -y --auto-remove build-essential \
 	&& rm -rf /var/lib/apt/lists/* /root/.cache/pip
+COPY scripts ./scripts
+COPY models/README.md ./models/README.md
+COPY models/licenses ./models/licenses
+RUN python scripts/prepare_models.py
 COPY app ./app
 COPY tests ./tests
 

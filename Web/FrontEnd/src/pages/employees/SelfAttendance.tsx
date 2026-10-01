@@ -156,9 +156,12 @@ export default function SelfAttendance() {
     BRANCH_LOCATION_NOT_CONFIGURED: "La ubicación de tu sucursal todavía no está configurada. Contacta a un administrador.",
     BRANCH_NOT_ASSIGNED: "No estás asignado a una sucursal activa.",
     MULTIPLE_BRANCHES_SELECT_REQUIRED: "Selecciona la sucursal donde marcarás asistencia.",
-    BIOMETRIC_NOT_REGISTERED: "Configura tu reconocimiento facial antes de marcar asistencia.",
+    BIOMETRIC_NOT_REGISTERED: preflight?.biometric.selfEnrollmentEnabled === false
+      ? "Tu reconocimiento facial todavía no está configurado. Solicita a un administrador que registre tu rostro."
+      : "Configura tu reconocimiento facial antes de marcar asistencia.",
     BIOMETRIC_PENDING: "Tu registro facial está pendiente de aprobación.",
     BIOMETRIC_DISABLED: "Tu reconocimiento facial está deshabilitado. Contacta a un administrador.",
+    BIOMETRIC_REENROLLMENT_REQUIRED: "Tu reconocimiento facial necesita actualizarse. Solicita al administrador que registre nuevamente tu rostro.",
     INVALID_LOCATION: "La ubicación obtenida no es válida.",
     UNSUPPORTED: "Tu navegador no permite obtener la ubicación.",
     CHECKIN_STATUS_ERROR: "No se pudo consultar el estado de marcación.",
@@ -212,7 +215,11 @@ export default function SelfAttendance() {
             ) : null}
             {status !== "SUCCESS" && <Alert type={status === "ALREADY_MARKED" ? "success" : status.includes("FAILED") || status.includes("MATCHED") || status.includes("OUTSIDE") || status.includes("NOT_CONFIGURED") || status.includes("NOT_REGISTERED") || status.includes("PENDING") || status.includes("ASSIGNED") || status === "GPS_INACCURATE" ? "warning" : "info"} showIcon title={messageByStatus[status] || "Inicia la verificación para continuar."} description={gpsInaccurateDescription} />}
             {status === "SUCCESS" && result && <Alert type="success" showIcon title="¡Asistencia registrada correctamente!" description={`${result.fecha} a las ${result.hora_entrada} · ${branchName} · ${result.categoria}`} />}
-            {preflight?.biometric.status === "NOT_REGISTERED" && !requestMode && <><p className="text-sm text-slate-600">Todavía no tienes un rostro registrado.</p><Button type="primary" onClick={() => setRequestMode(true)}>Configurar mi rostro</Button></>}
+            {preflight?.biometric.status === "NOT_REGISTERED" && !requestMode && (
+              preflight.biometric.selfEnrollmentEnabled === false
+                ? <p className="text-sm text-slate-600">Tu reconocimiento facial todavía no está configurado. Solicita a un administrador que registre tu rostro.</p>
+                : <><p className="text-sm text-slate-600">Todavía no tienes un rostro registrado.</p><Button type="primary" onClick={() => setRequestMode(true)}>Configurar mi rostro</Button></>
+            )}
             {requestMode && <FaceCamera mode="enrollment" ref={cameraRef} onEnrollmentConfirm={submitBiometricRequest} />}
             {preflight?.biometric.status === "ACTIVE" && preflight.branch && !preflight.branch.locationConfigured && <p className="text-sm text-slate-600">No hay una ubicación GPS registrada para esta sucursal. Comunícate con el encargado para configurarla.</p>}
             {canShowLocationPanel && <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">Sucursal: <strong>{preflight?.branch?.nombre}</strong><br />Radio permitido: {preflight?.branch?.radiusMeters} m<br />Precisión requerida: {preflight?.branch?.maxGpsAccuracyMeters} m<br />{currentAccuracy !== null && <>Mejor precisión encontrada: {Math.round(currentAccuracy)} m<br /></>}{gpsSearching ? <span className="inline-flex items-center gap-2 pt-2"><Spin size="small" /> Buscando una señal más precisa...</span> : canStart ? <Button className="mt-3" type="primary" onClick={() => void start()}>Verificar ubicación</Button> : null}</div>}
@@ -256,4 +263,3 @@ export default function SelfAttendance() {
     </div>
   );
 }
-

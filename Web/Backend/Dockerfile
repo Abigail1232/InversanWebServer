@@ -8,7 +8,7 @@ ENV NODE_ENV=production
 
 COPY package*.json ./
 
-RUN npm install
+RUN npm ci
 
 COPY . .
 
@@ -17,5 +17,5 @@ RUN npx prisma generate
 
 EXPOSE 3000
 
-# Comando para iniciar la app en modo PRUEBAS (Se borra y recrea la DB cada vez
+# Aplica migraciones pendientes sin borrar ni recrear la base de datos.
 CMD sh -c "npx prisma migrate deploy && npm start"

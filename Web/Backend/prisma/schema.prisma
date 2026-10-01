@@ -247,7 +247,7 @@ model Biometria_Facial {
 model Solicitud_Biometria {
   id_solicitud       Int      @id @default(autoincrement())
   id_usuario         Int
-  embedding_encrypted String  @db.Text
+  embedding_encrypted String? @db.Text
   model_version      String   @db.VarChar(80)
   status             String   @db.VarChar(20)
   created_at         DateTime @default(now()) @db.Timestamp(0)

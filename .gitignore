@@ -4,6 +4,7 @@
 .env
 .env.*
 !.env.example
+!.env.production.example
 !**/.env.example
 
 # ============================================
@@ -74,3 +75,7 @@ Web/Backend/assets/[0-9]*-*.webp
 *.egg-info/
 .venv/
 venv/
+
+# FaceService model binaries are downloaded reproducibly during Docker build.
+FaceService/models/*.onnx
+FaceService/models/*.tmp

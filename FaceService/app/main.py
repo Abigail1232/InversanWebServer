@@ -1,5 +1,5 @@
 from fastapi import FastAPI, HTTPException
-from .face_engine import FaceEngine, MODEL_VERSION
+from .face_engine import FaceEngine, MODEL_VERSION, SFACE_DEFAULT_COSINE_THRESHOLD, SFACE_VERSION, YUNET_VERSION
 from .liveness import validate_frames
 from .schemas import EmbeddingResponse, ImageRequest, LivenessRequest, VerifyRequest
 
@@ -20,7 +20,14 @@ def ready():
         raise HTTPException(status_code=503, detail="Modelo facial no disponible") from error
     if not model_loaded:
         raise HTTPException(status_code=503, detail="Modelo facial no disponible")
-    return {"ok": True, "model_version": MODEL_VERSION, "model_loaded": engine.analysis is not None}
+    return {
+        "ready": True,
+        "ok": True,
+        "model_version": MODEL_VERSION,
+        "modelVersion": MODEL_VERSION,
+        "detector": YUNET_VERSION,
+        "recognizer": SFACE_VERSION,
+    }
 
 
 @app.post("/embedding", response_model=EmbeddingResponse)
@@ -42,13 +49,12 @@ def embedding(request: ImageRequest):
 @app.post("/verify")
 def verify(request: VerifyRequest):
     try:
-        vector, face_count, quality_ok = engine.extract(request.image_base64)
+        result = engine.verify(request.image_base64, request.reference_embedding, request.threshold)
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     except RuntimeError as error:
         raise HTTPException(status_code=503, detail="Modelo facial no disponible") from error
-    similarity = engine.similarity(vector, request.reference_embedding) if quality_ok else 0.0
-    return {"matched": quality_ok and similarity >= request.threshold, "similarity": similarity, "face_count": face_count}
+    return result | {"model_version": MODEL_VERSION, "reference_threshold": request.threshold or SFACE_DEFAULT_COSINE_THRESHOLD}
 
 
 @app.post("/liveness")
@@ -60,5 +66,5 @@ def liveness(request: LivenessRequest):
     return {
         "verified": validate_frames(frames, request.actions),
         "actions_requested": request.actions,
-        "mode": "MVP_BASIC_MOTION",
+        "mode": "LANDMARK_SEMANTIC_V1",
     }

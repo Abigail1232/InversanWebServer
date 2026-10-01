@@ -1,7 +1,9 @@
 const axios = require("axios");
+const { CURRENT_FACE_MODEL_VERSION } = require("./faceModel");
 
 const FACE_QUALITY_INSUFFICIENT = "FACE_QUALITY_INSUFFICIENT";
 const FACE_SERVICE_UNAVAILABLE = "FACE_SERVICE_UNAVAILABLE";
+const SFACE_DEFAULT_COSINE_THRESHOLD = 0.363;
 
 function getFaceServiceUrl() {
   return process.env.FACE_SERVICE_URL || "http://face-service:8000";
@@ -40,7 +42,7 @@ async function verifyFace(imageBase64, referenceEmbedding) {
   return postFaceService("/verify", {
     image_base64: imageBase64,
     reference_embedding: referenceEmbedding,
-    threshold: Number(process.env.FACE_MATCH_THRESHOLD || 0.55),
+    threshold: Number(process.env.SFACE_COSINE_THRESHOLD || process.env.FACE_MATCH_THRESHOLD || SFACE_DEFAULT_COSINE_THRESHOLD),
   }, 120000);
 }
 
@@ -48,4 +50,12 @@ async function verifyLiveness(frames, actions) {
   return postFaceService("/liveness", { frames, actions }, 120000);
 }
 
-module.exports = { FACE_QUALITY_INSUFFICIENT, FACE_SERVICE_UNAVAILABLE, createEmbedding, verifyFace, verifyLiveness };
+module.exports = {
+  CURRENT_FACE_MODEL_VERSION,
+  FACE_QUALITY_INSUFFICIENT,
+  FACE_SERVICE_UNAVAILABLE,
+  SFACE_DEFAULT_COSINE_THRESHOLD,
+  createEmbedding,
+  verifyFace,
+  verifyLiveness,
+};

@@ -1,8 +1,15 @@
 const prisma = require("../config/database");
 const { calculateAttendancePenalty } = require("../Services/attendancePenalty");
-const { getCurrentBusinessDate, getCurrentBusinessTime } = require("../Services/businessDate");
+const {
+  formatBusinessDate,
+  getBusinessMonthRange,
+  getCurrentBusinessDate,
+  getCurrentBusinessTime,
+} = require("../Services/businessDate");
 const { validateLocation } = require("../Services/geofence");
 const { decryptEmbedding } = require("../Services/biometricCrypto");
+const { CURRENT_FACE_MODEL_VERSION } = require("../Services/faceModel");
+const { randomInt } = require("node:crypto");
 
 const PRIVILEGIOS_ASISTENCIA = {
   MARCAR: "ASI_MARCAR",
@@ -25,6 +32,12 @@ function isCodedError(error, code) {
   return error instanceof Error && error.code === code;
 }
 
+function biometricReenrollmentRequired() {
+  const error = new Error("BIOMETRIC_REENROLLMENT_REQUIRED");
+  error.code = "BIOMETRIC_REENROLLMENT_REQUIRED";
+  return error;
+}
+
 function sendBiometricEncryptionNotConfigured(res) {
   return res.status(503).json({
     code: "BIOMETRIC_ENCRYPTION_NOT_CONFIGURED",
@@ -36,6 +49,27 @@ function sendFaceServiceUnavailable(res) {
   return res.status(503).json({
     code: "FACE_SERVICE_UNAVAILABLE",
     error: "El servicio de reconocimiento facial no está disponible.",
+  });
+}
+
+function sendBiometricDisabled(res) {
+  return res.status(503).json({
+    code: "BIOMETRIC_DISABLED",
+    error: "La asistencia biométrica no está habilitada.",
+  });
+}
+
+function sendSelfBiometricEnrollmentDisabled(res) {
+  return res.status(403).json({
+    code: "SELF_BIOMETRIC_ENROLLMENT_DISABLED",
+    error: "El registro facial debe realizarlo un administrador.",
+  });
+}
+
+function sendBiometricReenrollmentRequired(res) {
+  return res.status(409).json({
+    code: "BIOMETRIC_REENROLLMENT_REQUIRED",
+    error: "Tu registro facial necesita actualizarse. Solicita al administrador que registre nuevamente tu rostro.",
   });
 }
 
@@ -59,18 +93,14 @@ function parseId(value) {
   return Number.isInteger(n) && n > 0 ? n : null;
 }
 
-function todayDateString() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function parseDateOnly(value, fallback = todayDateString()) {
+function parseDateOnly(value, fallback = formatBusinessDate()) {
   const raw = typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : fallback;
   return new Date(`${raw}T00:00:00.000Z`);
 }
 
 function dateToString(value) {
   if (!value) return "";
-  return new Date(value).toISOString().slice(0, 10);
+  return formatBusinessDate(new Date(value));
 }
 
 function isValidHour(value) {
@@ -455,10 +485,11 @@ async function markAttendance(req, res) {
 async function getAttendanceReports(req, res) {
   try {
     const idSucursal = parseId(req.query.id_sucursal);
+    const currentBusinessDate = formatBusinessDate();
     const fechaInicio = parseDateOnly(
-      typeof req.query.fecha_inicio === "string" ? req.query.fecha_inicio : todayDateString().slice(0, 8) + "01",
+      typeof req.query.fecha_inicio === "string" ? req.query.fecha_inicio : `${currentBusinessDate.slice(0, 8)}01`,
     );
-    const fechaFin = parseDateOnly(typeof req.query.fecha_fin === "string" ? req.query.fecha_fin : todayDateString());
+    const fechaFin = parseDateOnly(typeof req.query.fecha_fin === "string" ? req.query.fecha_fin : currentBusinessDate);
 
     if (!idSucursal) {
       return res.status(400).json({ error: "Debe enviar una sucursal válida" });
@@ -539,10 +570,11 @@ async function getUserAttendanceRecords(req, res) {
   try {
     const idUsuario = parseId(req.params.idUsuario);
     const idSucursal = parseId(req.query.id_sucursal);
+    const currentBusinessDate = formatBusinessDate();
     const fechaInicio = parseDateOnly(
-      typeof req.query.fecha_inicio === "string" ? req.query.fecha_inicio : todayDateString().slice(0, 8) + "01",
+      typeof req.query.fecha_inicio === "string" ? req.query.fecha_inicio : `${currentBusinessDate.slice(0, 8)}01`,
     );
-    const fechaFin = parseDateOnly(typeof req.query.fecha_fin === "string" ? req.query.fecha_fin : todayDateString());
+    const fechaFin = parseDateOnly(typeof req.query.fecha_fin === "string" ? req.query.fecha_fin : currentBusinessDate);
 
     if (!idUsuario || !idSucursal) {
       return res.status(400).json({ error: "Debe enviar usuario y sucursal válidos" });
@@ -645,19 +677,7 @@ async function updateAttendance(req, res) {
 }
 
 function getMonthRange(query) {
-  const current = new Date();
-  const month = query.mes === undefined ? current.getUTCMonth() + 1 : Number(query.mes);
-  const year = query.anio === undefined ? current.getUTCFullYear() : Number(query.anio);
-
-  if (!Number.isInteger(month) || month < 1 || month > 12 || !Number.isInteger(year) || year < 1970 || year > 9999) {
-    return null;
-  }
-
-  return {
-    fechaInicio: new Date(Date.UTC(year, month - 1, 1)),
-    fechaFin: new Date(Date.UTC(year, month, 0)),
-    mes: `${year}-${String(month).padStart(2, "0")}`,
-  };
+  return getBusinessMonthRange(query);
 }
 
 async function getMyAttendanceAccess(req) {
@@ -701,28 +721,29 @@ async function verifyMyAttendanceLocation(req, res) {
 async function getMyCheckinStatus(req, res) {
   try {
     const assignment = await getSelfServiceBranch(req, parseId(req.query?.id_sucursal));
-    if (!assignment) return res.json({ eligible: false, code: "BRANCH_NOT_ASSIGNED", biometric: { registered: false, status: "NOT_REGISTERED" }, attendance: { alreadyMarkedToday: false } });
+    const selfEnrollmentEnabled = isSelfBiometricEnrollmentEnabled();
+    if (!assignment) return res.json({ eligible: false, code: "BRANCH_NOT_ASSIGNED", biometric: { registered: false, status: "NOT_REGISTERED", selfEnrollmentEnabled }, attendance: { alreadyMarkedToday: false } });
     if (assignment.multiple) {
       return res.json({
         eligible: false,
         code: "MULTIPLE_BRANCHES_SELECT_REQUIRED",
         branches: assignment.branches,
-        biometric: { registered: false, status: "NOT_REGISTERED" },
+        biometric: { registered: false, status: "NOT_REGISTERED", selfEnrollmentEnabled },
         attendance: { alreadyMarkedToday: false },
       });
     }
 
-    const biometric = await prisma.biometria_Facial.findUnique({ where: { id_usuario: req.user.id_usuario }, select: { activo: true } });
+    const biometric = await prisma.biometria_Facial.findUnique({ where: { id_usuario: req.user.id_usuario }, select: { activo: true, model_version: true } });
     const pending = await prisma.solicitud_Biometria.findFirst({ where: { id_usuario: req.user.id_usuario, status: "PENDING" }, select: { id_solicitud: true } });
     const attendance = await prisma.asistencia.findUnique({ where: { id_usuario_id_sucursal_fecha: { id_usuario: req.user.id_usuario, id_sucursal: assignment.id_sucursal, fecha: getCurrentBusinessDate() } }, select: { id_asistencia: true } });
-    const biometricStatus = biometric?.activo ? "ACTIVE" : biometric ? "DISABLED" : pending ? "PENDING" : "NOT_REGISTERED";
+    const biometricStatus = biometric?.activo && biometric.model_version !== CURRENT_FACE_MODEL_VERSION ? "REENROLLMENT_REQUIRED" : biometric?.activo ? "ACTIVE" : biometric ? "DISABLED" : pending ? "PENDING" : "NOT_REGISTERED";
     const locationConfigured = Boolean(assignment.sucursal.location_configured);
     return res.json({
       eligible: locationConfigured && biometricStatus === "ACTIVE" && !attendance,
       branch: mapSelfServiceBranch(assignment),
-      biometric: { registered: biometricStatus === "ACTIVE", status: biometricStatus },
+      biometric: { registered: biometricStatus === "ACTIVE", status: biometricStatus, selfEnrollmentEnabled },
       attendance: { alreadyMarkedToday: Boolean(attendance) },
-      code: attendance ? "ATTENDANCE_ALREADY_REGISTERED" : biometricStatus === "PENDING" ? "BIOMETRIC_PENDING" : biometricStatus === "NOT_REGISTERED" ? "BIOMETRIC_NOT_REGISTERED" : biometricStatus === "DISABLED" ? "BIOMETRIC_DISABLED" : !locationConfigured ? "BRANCH_LOCATION_NOT_CONFIGURED" : undefined,
+      code: attendance ? "ATTENDANCE_ALREADY_REGISTERED" : biometricStatus === "PENDING" ? "BIOMETRIC_PENDING" : biometricStatus === "NOT_REGISTERED" ? "BIOMETRIC_NOT_REGISTERED" : biometricStatus === "DISABLED" ? "BIOMETRIC_DISABLED" : biometricStatus === "REENROLLMENT_REQUIRED" ? "BIOMETRIC_REENROLLMENT_REQUIRED" : !locationConfigured ? "BRANCH_LOCATION_NOT_CONFIGURED" : undefined,
     });
   } catch (error) {
     console.error("Error obteniendo estado de check-in:", error);
@@ -732,7 +753,19 @@ async function getMyCheckinStatus(req, res) {
 
 function randomActions() {
   const options = ["BLINK", "TURN_LEFT", "TURN_RIGHT", "LOOK_CENTER"];
-  return options.sort(() => Math.random() - 0.5).slice(0, 3);
+  for (let index = options.length - 1; index > 0; index -= 1) {
+    const swapIndex = randomInt(index + 1);
+    [options[index], options[swapIndex]] = [options[swapIndex], options[index]];
+  }
+  return options.slice(0, 3);
+}
+
+function isBiometricEnabled() {
+  return process.env.BIOMETRIC_ENABLED === "true";
+}
+
+function isSelfBiometricEnrollmentEnabled() {
+  return process.env.SELF_BIOMETRIC_ENROLLMENT_ENABLED === "true";
 }
 
 async function getSelfServiceBranch(req, requestedBranchId = null) {
@@ -756,8 +789,8 @@ async function getSelfServiceBranch(req, requestedBranchId = null) {
 
 async function createLivenessChallenge(req, res) {
   try {
+    if (!isBiometricEnabled()) return sendBiometricDisabled(res);
     const redis = require("../middleware/redisConfig");
-    if (process.env.BIOMETRIC_ENABLED === "false") return res.status(503).json({ error: "La marcación biométrica está deshabilitada" });
     const assignment = await getSelfServiceBranch(req, parseId(req.body?.id_sucursal));
     if (!assignment) return res.status(403).json({ code: "BRANCH_NOT_ASSIGNED", error: "El usuario no está asignado a una sucursal activa" });
 
@@ -791,6 +824,7 @@ async function createLivenessChallenge(req, res) {
 
 async function faceCheckIn(req, res) {
   try {
+    if (!isBiometricEnabled()) return sendBiometricDisabled(res);
     const redis = require("../middleware/redisConfig");
     const { verifyFace, verifyLiveness } = require("../Services/faceService");
     const attemptsKey = `attendance:biometric:attempts:${req.user.id_usuario}`;
@@ -822,6 +856,8 @@ async function faceCheckIn(req, res) {
     const biometric = await prisma.biometria_Facial.findUnique({ where: { id_usuario: req.user.id_usuario } });
     if (!biometric || !biometric.activo) return res.status(409).json({ code: biometric ? "BIOMETRIC_DISABLED" : "BIOMETRIC_NOT_REGISTERED", error: "Tu reconocimiento facial todavía no está configurado. Contacta a un administrador." });
 
+    if (biometric?.activo && biometric.model_version !== CURRENT_FACE_MODEL_VERSION) throw biometricReenrollmentRequired();
+
     const liveness = await verifyLiveness(frames, challenge.actions);
     if (!liveness.verified) {
       await redis.incr(attemptsKey);
@@ -843,7 +879,7 @@ async function faceCheckIn(req, res) {
         where: { id_usuario_id_sucursal_fecha: { id_usuario: req.user.id_usuario, id_sucursal: assignment.id_sucursal, fecha } },
       });
       if (existing) return null;
-      return transaction.asistencia.create({
+      const attendance = await transaction.asistencia.create({
         data: {
           id_usuario: req.user.id_usuario,
           id_sucursal: assignment.id_sucursal,
@@ -865,6 +901,11 @@ async function faceCheckIn(req, res) {
         },
         include: { usuario: true, sucursal: true },
       });
+      await transaction.biometria_Facial.update({
+        where: { id_usuario: req.user.id_usuario },
+        data: { last_verified_at: new Date() },
+      });
+      return attendance;
     });
     if (!saved) return res.status(409).json({ code: "ATTENDANCE_ALREADY_REGISTERED", error: "Tu asistencia de hoy ya fue registrada" });
     await redis.del(attemptsKey);
@@ -872,6 +913,7 @@ async function faceCheckIn(req, res) {
   } catch (error) {
     console.error("Error registrando asistencia biométrica:", error);
     if (isCodedError(error, "BIOMETRIC_ENCRYPTION_NOT_CONFIGURED")) return sendBiometricEncryptionNotConfigured(res);
+    if (isCodedError(error, "BIOMETRIC_REENROLLMENT_REQUIRED")) return sendBiometricReenrollmentRequired(res);
     if (isCodedError(error, "FACE_SERVICE_UNAVAILABLE")) return sendFaceServiceUnavailable(res);
     if (isCodedError(error, "FACE_QUALITY_INSUFFICIENT")) return sendFaceQualityInsufficient(res);
     return res.status(500).json({ code: "BIOMETRIC_REQUEST_ERROR", error: "No se pudo registrar la asistencia biométrica" });
@@ -907,6 +949,8 @@ async function registerBiometric(req, res) {
 
 async function requestBiometricRegistration(req, res) {
   try {
+    if (!isBiometricEnabled()) return sendBiometricDisabled(res);
+    if (!isSelfBiometricEnrollmentEnabled()) return sendSelfBiometricEnrollmentDisabled(res);
     const assignment = await getSelfServiceBranch(req, parseId(req.body?.id_sucursal));
     if (!assignment) return res.status(403).json({ code: "BRANCH_NOT_ASSIGNED", error: "No estás asignado a una sucursal activa" });
     if (assignment.multiple) return res.status(409).json({ code: "MULTIPLE_BRANCHES_SELECT_REQUIRED", error: "Selecciona una sucursal para solicitar registro biomÃ©trico", branches: assignment.branches });
@@ -955,12 +999,16 @@ async function reviewBiometricRequest(req, res) {
     const result = await prisma.$transaction(async (transaction) => {
       const request = await transaction.solicitud_Biometria.findUnique({ where: { id_solicitud: idSolicitud } });
       if (!request || request.status !== "PENDING") return null;
+      if (decision === "APPROVED" && !request.embedding_encrypted) return { missingEmbedding: true };
+      if (decision === "APPROVED" && request.model_version !== CURRENT_FACE_MODEL_VERSION) return { reenrollmentRequired: true };
       if (decision === "APPROVED") {
         await transaction.biometria_Facial.upsert({ where: { id_usuario: request.id_usuario }, create: { id_usuario: request.id_usuario, embedding: request.embedding_encrypted, model_version: request.model_version, registered_by: req.user.id_usuario, activo: true }, update: { embedding: request.embedding_encrypted, model_version: request.model_version, registered_by: req.user.id_usuario, activo: true } });
       }
-      return transaction.solicitud_Biometria.update({ where: { id_solicitud: idSolicitud }, data: { status: decision, reviewed_by: req.user.id_usuario, reviewed_at: new Date() }, select: { id_solicitud: true, status: true } });
+      return transaction.solicitud_Biometria.update({ where: { id_solicitud: idSolicitud }, data: { status: decision, reviewed_by: req.user.id_usuario, reviewed_at: new Date(), embedding_encrypted: null }, select: { id_solicitud: true, status: true } });
     });
     if (!result) return res.status(409).json({ code: "BIOMETRIC_REQUEST_ALREADY_REVIEWED", error: "La solicitud ya fue revisada" });
+    if (result.missingEmbedding) return res.status(409).json({ code: "BIOMETRIC_REQUEST_EMBEDDING_MISSING", error: "La solicitud no conserva evidencia biometrica revisable" });
+    if (result.reenrollmentRequired) return res.status(409).json({ code: "BIOMETRIC_REENROLLMENT_REQUIRED", error: "Esta solicitud fue creada con un modelo facial anterior. El empleado debe registrar nuevamente su rostro." });
     return res.json(result);
   } catch (error) {
     console.error("Error revisando solicitud biométrica:", error);
@@ -1016,12 +1064,13 @@ async function getMyAttendanceRecords(req, res) {
       return res.status(403).json({ error: "El usuario no está asignado a una sucursal" });
     }
 
-    const defaultStart = todayDateString().slice(0, 8) + "01";
+    const currentBusinessDate = formatBusinessDate();
+    const defaultStart = `${currentBusinessDate.slice(0, 8)}01`;
     const fechaInicio = parseDateOnly(
       typeof req.query.fecha_inicio === "string" ? req.query.fecha_inicio : defaultStart,
     );
     const fechaFin = parseDateOnly(
-      typeof req.query.fecha_fin === "string" ? req.query.fecha_fin : todayDateString(),
+      typeof req.query.fecha_fin === "string" ? req.query.fecha_fin : currentBusinessDate,
     );
 
     const registros = await prisma.asistencia.findMany({

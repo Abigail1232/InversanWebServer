@@ -8,6 +8,39 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 
+function validateBiometricConfig() {
+  if (process.env.BIOMETRIC_ENABLED !== "true") return;
+
+  const invalidVariables = [];
+  const requiredStrings = ["BIOMETRIC_ENCRYPTION_KEY", "FACE_SERVICE_URL"];
+
+  for (const variableName of requiredStrings) {
+    if (!process.env[variableName]?.trim()) invalidVariables.push(variableName);
+  }
+
+  const threshold = Number(process.env.SFACE_COSINE_THRESHOLD || process.env.FACE_MATCH_THRESHOLD);
+  if (!Number.isFinite(threshold) || threshold <= 0 || threshold >= 1) {
+    invalidVariables.push("SFACE_COSINE_THRESHOLD");
+  }
+
+  const ttl = Number(process.env.LIVENESS_CHALLENGE_TTL_SECONDS);
+  if (!Number.isInteger(ttl) || ttl <= 0) {
+    invalidVariables.push("LIVENESS_CHALLENGE_TTL_SECONDS");
+  }
+
+  const maxAttempts = Number(process.env.BIOMETRIC_MAX_ATTEMPTS);
+  if (!Number.isInteger(maxAttempts) || maxAttempts <= 0) {
+    invalidVariables.push("BIOMETRIC_MAX_ATTEMPTS");
+  }
+
+  if (invalidVariables.length > 0) {
+    console.error(`Invalid biometric configuration: ${invalidVariables.join(", ")}`);
+    process.exit(1);
+  }
+}
+
+validateBiometricConfig();
+
 const pedidoRoutes = require("./Routes/pedido_route");
 const departmentsRoutes = require("./Routes/departments");
 const entriesRoutes = require("./Routes/entries");
@@ -41,18 +74,33 @@ const visitasRoutes = require("./Routes/visitas");
 const reportesRoutes = require("./Routes/reportes_route");
 const asistenciasRoutes = require("./Routes/asistencias");
 
-const allowedOrigins = [
-  process.env.FRONTEND_URL || "http://localhost:5173",
-  "https://web-inversan.vercel.app",
-  /https:\/\/web-inversan.*\.vercel\.app$/,
-  "https://grupoinversan.com",
-  "https://www.grupoinversan.com",
-  /^https:\/\/([a-z0-9-]+\.)*grupoinversan\.com$/,
-  ...(process.env.CORS_ORIGINS || "")
+function parseCorsOrigins(value) {
+  return (value || "")
     .split(",")
     .map((origin) => origin.trim())
-    .filter(Boolean),
-];
+    .filter(Boolean);
+}
+
+function getAllowedOrigins() {
+  const explicitOrigins = [
+    process.env.FRONTEND_URL,
+    ...parseCorsOrigins(process.env.CORS_ORIGINS),
+  ].filter(Boolean);
+
+  if (process.env.NODE_ENV === "production") {
+    return Array.from(new Set(explicitOrigins));
+  }
+
+  return Array.from(new Set([
+    ...explicitOrigins,
+    "http://localhost:5000",
+    "http://127.0.0.1:5000",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+  ]));
+}
+
+const allowedOrigins = getAllowedOrigins();
 
 // Middlewares globales
 app.use(
@@ -107,6 +155,10 @@ app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/producto-event", visitasRoutes);
 app.use("/api/reportes", reportesRoutes);
 app.use("/api/asistencias", asistenciasRoutes);
+
+app.get("/health", (req, res) => {
+  res.json({ ok: true });
+});
 
 // Health check básico para verificar que el servidor responde
 app.get("/", (req, res) => {

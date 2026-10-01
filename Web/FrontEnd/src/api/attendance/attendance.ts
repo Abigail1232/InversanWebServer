@@ -24,6 +24,7 @@ export function getBiometricApiErrorMessage(error: unknown, fallback = "No se pu
   if (code === "BIOMETRIC_ENCRYPTION_NOT_CONFIGURED") return "El servicio biométrico todavía no está configurado.";
   if (code === "FACE_SERVICE_UNAVAILABLE") return "El servicio de reconocimiento facial no está disponible.";
   if (code === "FACE_QUALITY_INSUFFICIENT") return "La foto no tiene suficiente calidad. Inténtalo nuevamente.";
+  if (code === "BIOMETRIC_REENROLLMENT_REQUIRED") return "Tu reconocimiento facial necesita actualizarse. Solicita al administrador que registre nuevamente tu rostro.";
   return getApiErrorMessage(error) || fallback;
 }
 
@@ -200,7 +201,7 @@ export type CheckinStatus = {
   code?: string;
   branch?: { id: number; nombre: string; locationConfigured: boolean; radiusMeters: number; maxGpsAccuracyMeters: number };
   branches?: Array<{ id: number; nombre: string; locationConfigured: boolean; radiusMeters: number; maxGpsAccuracyMeters: number }>;
-  biometric: { registered: boolean; status: "NOT_REGISTERED" | "PENDING" | "ACTIVE" | "DISABLED" };
+  biometric: { registered: boolean; status: "NOT_REGISTERED" | "PENDING" | "ACTIVE" | "DISABLED" | "REENROLLMENT_REQUIRED"; selfEnrollmentEnabled?: boolean };
   attendance: { alreadyMarkedToday: boolean };
 };
 
