@@ -31,6 +31,7 @@ type Props = {
   onError?: (message: string) => void;
   autoCapture?: boolean;
   autoCaptureEnabled?: boolean;
+  resetToken?: number;
   onAutoCapture?: (frames: string[]) => void | Promise<void>;
   onEnrollmentConfirm?: (image: string) => Promise<void>;
 };
@@ -65,7 +66,7 @@ const automaticPositionMessages: Record<FacePosition, string> = {
 
 const wait = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
 
-const FaceCamera = forwardRef<FaceCameraHandle, Props>(function FaceCamera({ mode = "liveness", instruction, onError, autoCapture = false, autoCaptureEnabled = true, onAutoCapture, onEnrollmentConfirm }, ref) {
+const FaceCamera = forwardRef<FaceCameraHandle, Props>(function FaceCamera({ mode = "liveness", instruction, onError, autoCapture = false, autoCaptureEnabled = true, resetToken = 0, onAutoCapture, onEnrollmentConfirm }, ref) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const landmarkerRef = useRef<FaceLandmarker | null>(null);
@@ -83,6 +84,16 @@ const FaceCamera = forwardRef<FaceCameraHandle, Props>(function FaceCamera({ mod
   const [confirming, setConfirming] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
   const shouldAnalyze = mode === "enrollment" || mode === "attendance-auto" || autoCapture;
+
+  const resetAutomaticAttempt = useCallback(() => {
+    stableSinceRef.current = null;
+    landmarkSamplesRef.current = [];
+    captureTriggeredRef.current = false;
+    captureInProgressRef.current = false;
+    baselineFrameRef.current = null;
+    setCountdown(null);
+    setPosition("NO_FACE");
+  }, []);
 
   const stopStream = useCallback(() => {
     streamRef.current?.getTracks().forEach((track) => track.stop());
@@ -147,6 +158,10 @@ const FaceCamera = forwardRef<FaceCameraHandle, Props>(function FaceCamera({ mod
     setCountdown(null);
     stopStream();
   }, [captureCurrentFrame, stopStream]);
+
+  useEffect(() => {
+    if (mode === "attendance-auto") resetAutomaticAttempt();
+  }, [mode, resetAutomaticAttempt, resetToken]);
 
   useEffect(() => {
     let mounted = true;
@@ -290,12 +305,7 @@ const FaceCamera = forwardRef<FaceCameraHandle, Props>(function FaceCamera({ mod
   const handleRetake = () => {
     setPreview(null);
     setError("");
-    setPosition("NO_FACE");
-    stableSinceRef.current = null;
-    landmarkSamplesRef.current = [];
-    captureTriggeredRef.current = false;
-    captureInProgressRef.current = false;
-    baselineFrameRef.current = null;
+    resetAutomaticAttempt();
     void openCamera();
   };
 

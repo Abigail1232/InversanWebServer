@@ -108,10 +108,10 @@ test("30 valid callbacks still allow only one auto-capture trigger", () => {
 
 test("SelfAttendance does not remount FaceCamera when GPS challenge becomes ready", () => {
   const source = fs.readFileSync("src/pages/employees/SelfAttendance.tsx", "utf8");
-  const startBody = source.slice(source.indexOf("const start = useCallback"), source.indexOf("const scheduleNewAttempt"));
-  assert.match(startBody, /setChallenge\(next\)/);
-  assert.doesNotMatch(startBody, /setAttemptKey/);
-  assert.match(source, /setAttemptKey\(\(current\) => current \+ 1\);/);
+  const challengeBody = source.slice(source.indexOf("const createChallengeForCurrentLocation = useCallback"), source.indexOf("const start = useCallback"));
+  assert.match(challengeBody, /setChallenge\(next\)/);
+  assert.doesNotMatch(source, /setAttemptKey/);
+  assert.match(source, /resetToken=\{cameraResetToken\}/);
 });
 
 test("retryable face failures keep generating a new attempt path", () => {
@@ -120,5 +120,5 @@ test("retryable face failures keep generating a new attempt path", () => {
   assert.match(source, /LIVENESS_FAILED/);
   assert.match(source, /CHALLENGE_EXPIRED/);
   assert.match(source, /CHALLENGE_INVALID/);
-  assert.match(source, /scheduleNewAttempt\(\)/);
+  assert.match(source, /scheduleNewFaceAttempt\(retryCode\)/);
 });

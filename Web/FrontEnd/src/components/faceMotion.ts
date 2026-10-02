@@ -1,5 +1,5 @@
 export const PASSIVE_LIVENESS_WINDOW_MS = 700;
-export const MIN_FACE_MOTION = 0.012;
+export const MIN_FACE_MOTION = 0.018;
 export const MAX_FACE_MOTION = 0.12;
 export const AUTO_CAPTURE_STABILITY_MS = 220;
 export const AUTO_CAPTURE_FRAME_COUNT = 3;

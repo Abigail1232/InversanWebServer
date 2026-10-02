@@ -37,6 +37,11 @@ function createResponse() {
   return {
     statusCode: 200,
     body: null,
+    headers: {},
+    setHeader(name, value) {
+      this.headers[name] = value;
+      return this;
+    },
     status(code) {
       this.statusCode = code;
       return this;
@@ -1015,6 +1020,44 @@ test("attendance controller enforces branch and self-service access", async (t) 
     else process.env.BIOMETRIC_ENABLED = previousBiometric;
     if (previousKey === undefined) delete process.env.BIOMETRIC_ENCRYPTION_KEY;
     else process.env.BIOMETRIC_ENCRYPTION_KEY = previousKey;
+  });
+
+  await t.test("faceCheckIn returns 429 BIOMETRIC_RATE_LIMITED with Retry-After", async () => {
+    const previousBiometric = process.env.BIOMETRIC_ENABLED;
+    const previousMax = process.env.BIOMETRIC_MAX_ATTEMPTS;
+    process.env.BIOMETRIC_ENABLED = "true";
+    process.env.BIOMETRIC_MAX_ATTEMPTS = "5";
+
+    const redisPath = require.resolve("../middleware/redisConfig");
+    const redisModule = new Module(redisPath);
+    redisModule.filename = redisPath;
+    redisModule.loaded = true;
+    let ttlValue = 420;
+    redisModule.exports = {
+      get: async () => "5",
+      ttl: async () => ttlValue,
+    };
+    require.cache[redisPath] = redisModule;
+
+    const limited = createResponse();
+    await attendanceController.faceCheckIn({ user: { id_usuario: 7 }, body: {} }, limited);
+    assert.equal(limited.statusCode, 429);
+    assert.equal(limited.body.code, "BIOMETRIC_RATE_LIMITED");
+    assert.equal(limited.body.retry_after_seconds, 420);
+    assert.ok(limited.body.error);
+    assert.equal(limited.headers["Retry-After"], "420");
+
+    ttlValue = -1;
+    const noTtl = createResponse();
+    await attendanceController.faceCheckIn({ user: { id_usuario: 7 }, body: {} }, noTtl);
+    assert.equal(noTtl.statusCode, 429);
+    assert.equal(noTtl.body.retry_after_seconds, 0);
+    assert.equal(noTtl.headers["Retry-After"], undefined);
+
+    if (previousBiometric === undefined) delete process.env.BIOMETRIC_ENABLED;
+    else process.env.BIOMETRIC_ENABLED = previousBiometric;
+    if (previousMax === undefined) delete process.env.BIOMETRIC_MAX_ATTEMPTS;
+    else process.env.BIOMETRIC_MAX_ATTEMPTS = previousMax;
   });
 
   await t.test("self check-in challenge requests passive motion liveness", async () => {

@@ -823,7 +823,16 @@ async function faceCheckIn(req, res) {
     const attemptsKey = `attendance:biometric:attempts:${req.user.id_usuario}`;
     const attempts = Number(await redis.get(attemptsKey) || 0);
     const maxAttempts = Number(process.env.BIOMETRIC_MAX_ATTEMPTS || 5);
-    if (attempts >= maxAttempts) return res.status(429).json({ error: "Demasiados intentos fallidos. Inténtalo más tarde." });
+    if (attempts >= maxAttempts) {
+      const ttl = Number(await redis.ttl(attemptsKey));
+      const retryAfterSeconds = Number.isFinite(ttl) && ttl > 0 ? ttl : 0;
+      if (retryAfterSeconds > 0) res.setHeader("Retry-After", String(retryAfterSeconds));
+      return res.status(429).json({
+        code: "BIOMETRIC_RATE_LIMITED",
+        error: "Demasiados intentos fallidos. Inténtalo más tarde.",
+        retry_after_seconds: retryAfterSeconds,
+      });
+    }
     const challengeId = typeof req.body?.challenge_id === "string" ? req.body.challenge_id : "";
     const imageBase64 = typeof req.body?.image_base64 === "string" ? req.body.image_base64 : "";
     const frames = Array.isArray(req.body?.frames) ? req.body.frames : [];
