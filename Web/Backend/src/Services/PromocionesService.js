@@ -64,6 +64,7 @@ class PromocionesService {
             include: {
               producto_imagen: true,
               marca: true,
+              diseno: { select: { nombre: true } },
               categoria: true,
               modelo_producto: { include: { modelo: true } },
               stock_bodega: {
@@ -127,6 +128,10 @@ class PromocionesService {
       return {
         id: producto.id_producto,
         brand: producto.marca?.nombre || "",
+        design: producto.diseno?.nombre || "",
+        width: producto.ancho_rin,
+        profile: producto.alto_rin,
+        rim: producto.rin,
         modelos: producto.modelo_producto.map((mp) => mp.modelo.nombre),
         name: producto.nombre,
         price: precioMasBajo,

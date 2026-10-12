@@ -19,13 +19,22 @@ import { type BrandItem } from "../../api/products/brands";
 import CategorySelectorPanel from "../../components/CategorySelectorPanel";
 import { FilterX, ChevronLeft, ChevronRight } from "lucide-react"; // Añade los Chevrons
 
+type ProductListPayload = Record<string, unknown>;
+
+const asRecord = (value: unknown): ProductListPayload | undefined =>
+  value !== null && typeof value === "object" && !Array.isArray(value)
+    ? (value as ProductListPayload)
+    : undefined;
+
 const toText = (value: unknown): string => {
   if (value == null) return "";
-  if (typeof value === "object" && "nombre" in (value as any)) {
-    return String((value as any).nombre ?? "");
-  }
+  const record = asRecord(value);
+  if (record) return String(record.nombre ?? "");
   return String(value);
 };
+
+const toDimension = (value: unknown): string | number | undefined =>
+  typeof value === "string" || typeof value === "number" ? value : undefined;
 
 const getImageUrl = (imagenes: unknown): string => {
   if (!imagenes) return "";
@@ -33,20 +42,14 @@ const getImageUrl = (imagenes: unknown): string => {
     const first = imagenes[0];
     if (!first) return "";
     if (typeof first === "string") return first;
-    return (
-      (first as any).url ??
-      (first as any).imagen_url ??
-      (first as any).url_imagen ??
-      ""
+    const image = asRecord(first);
+    return String(
+      image?.url ?? image?.imagen_url ?? image?.url_imagen ?? "",
     );
   }
   if (typeof imagenes === "string") return imagenes;
-  return (
-    (imagenes as any).url ??
-    (imagenes as any).imagen_url ??
-    (imagenes as any).url_imagen ??
-    ""
-  );
+  const image = asRecord(imagenes);
+  return String(image?.url ?? image?.imagen_url ?? image?.url_imagen ?? "");
 };
 const PAGE_SIZE = 8;
 
@@ -106,23 +109,39 @@ export default function SearchPage() {
     }
   }, [location.state?.noStockInBranch, location.pathname, navigate]);
 
-  const mapToRelatedProduct = (item: any): RelatedProduct => ({
-    id: String(item.id_producto ?? item.id ?? ""),
-    brand: toText(item.marca?.nombre ?? item.marca),
-    name: toText(item.nombre ?? item.nombre_producto),
-    price: item.precio_detalle ?? item.precio ?? 0,
-    originalPrice: item.precio_original,
-    discountPercent: item.descuento ?? 0,
-    promotionDisplayMode: item.promotionDisplayMode ?? "precio_tachado",
-    imageUrl: getImageUrl(
-      item.imageUrl ??
-        item.url_imagen ??
-        item.imagen_url ??
-        item.producto_imagen ??
-        item.imagenes,
-    ),
-    stock: item.stock_total ?? item.stock ?? item.existencias ?? 0,
-  });
+  const mapToRelatedProduct = (item: unknown): RelatedProduct => {
+    const product = asRecord(item);
+    if (!product) throw new TypeError("La API devolvió un producto inválido.");
+    return {
+      id: String(product.id_producto ?? product.id ?? ""),
+      brand: toText(product.marca),
+      name: toText(product.nombre ?? product.nombre_producto),
+      design: toText(product.design ?? product.diseno) || undefined,
+      width: toDimension(product.width ?? product.ancho_rin),
+      profile: toDimension(product.profile ?? product.alto_rin),
+      rim: toDimension(product.rim ?? product.rin),
+      price: Number(product.precio_detalle ?? product.precio ?? 0),
+      originalPrice:
+        product.precio_original == null
+          ? undefined
+          : Number(product.precio_original),
+      discountPercent: Number(product.descuento ?? 0),
+      promotionDisplayMode:
+        product.promotionDisplayMode === "porcentaje"
+          ? "porcentaje"
+          : "precio_tachado",
+      imageUrl: getImageUrl(
+        product.imageUrl ??
+          product.url_imagen ??
+          product.imagen_url ??
+          product.producto_imagen ??
+          product.imagenes,
+      ),
+      stock: Number(
+        product.stock_total ?? product.stock ?? product.existencias ?? 0,
+      ),
+    };
+  };
 
   const handleSearch = async (term?: string, page = 1) => {
     const query = (term ?? searchTerm).trim();
@@ -571,7 +590,6 @@ export default function SearchPage() {
                       <RelatedProductCard
                         product={product}
                         displayMode={product.promotionDisplayMode ?? "precio_tachado"}
-                        onViewDetails={(id) => navigate(`/product/${id}`)}
                       />
                     </motion.div>
                   ))

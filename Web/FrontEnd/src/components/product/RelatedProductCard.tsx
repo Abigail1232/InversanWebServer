@@ -1,17 +1,16 @@
 import type { RelatedProduct } from "../../types/product";
-import { FaBoxOpen } from "react-icons/fa";
 import DiscountBadge from "../ui/DiscountBadge";
-import { API_BASE_URL } from "../../config/api";
+import { buildProductImageUrl } from "../../config/api";
+import { Link } from "react-router-dom";
+import { buildProductSeo, buildProductUrl } from "../../seo/productSeo";
 
 interface Props {
   product: RelatedProduct;
-  onViewDetails?: (id: string) => void;
   displayMode?: "porcentaje" | "precio_tachado";
 }
 
 export default function RelatedProductCard({
   product,
-  onViewDetails,
   displayMode = "precio_tachado",
 }: Props) {
   const discountPercent = Number(product.discountPercent ?? 0);
@@ -22,7 +21,7 @@ export default function RelatedProductCard({
       : undefined;
   const originalPriceCandidate = Number(
     product.originalPrice ??
-      (product as any).precio_anterior ??
+    product.precio_anterior ??
       fallbackOriginalPrice,
   );
   const originalPrice =
@@ -39,6 +38,8 @@ export default function RelatedProductCard({
   const showPercentage =
     hasDiscount &&
     displayMode === "porcentaje";
+  const productUrl = buildProductUrl(product);
+  const productHeading = buildProductSeo(product).heading;
 
   // Formateador de moneda común para consistencia
   const formatPrice = (value: number) =>
@@ -52,13 +53,31 @@ export default function RelatedProductCard({
       {/* Contenedor de Imagen */}
       <div className="bg-[#f9fafb] rounded-[10px] m-3 overflow-hidden aspect-[4/3] w-auto flex-shrink-0 flex items-center justify-center">
         {product.imageUrl ? (
-          <img
-            src={`${API_BASE_URL}/public/${product.imageUrl}`}
-            alt={product.name}
-            className="w-full h-full object-contain"
-          />
+          <Link
+            to={productUrl}
+            aria-label={`Ver ${productHeading}`}
+            className="flex h-full w-full items-center justify-center"
+          >
+            <img
+              src={buildProductImageUrl(product.imageUrl)}
+              alt={productHeading}
+              loading="lazy"
+              decoding="async"
+              className="w-full h-full object-contain"
+            />
+          </Link>
         ) : (
-          <FaBoxOpen className="w-10 h-10 text-[#9ca3af]" />
+          <svg
+            className="w-10 h-10 text-[#9ca3af]"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            aria-hidden="true"
+          >
+            <path d="m21 8-9-5-9 5v8l9 5 9-5V8Z" />
+            <path d="m3.3 7.8 8.7 5 8.7-5M12 22V13" />
+          </svg>
         )}
       </div>
 
@@ -70,9 +89,12 @@ export default function RelatedProductCard({
 
         {/* Nombre del producto con altura mínima para evitar saltos */}
         <div className="min-h-[2.5rem] md:min-h-[3rem] mb-1">
-          <p className="text-sm md:text-base text-[#6a7282] md:text-[#1a1a1a] line-clamp-2">
-            {product.name}
-          </p>
+          <Link
+            to={productUrl}
+            className="text-sm md:text-base text-[#6a7282] md:text-[#1a1a1a] line-clamp-2 hover:underline"
+          >
+            {productHeading}
+          </Link>
         </div>
 
         {/* Bloque de Precios - Empujado al fondo para alineación horizontal */}
@@ -113,18 +135,17 @@ export default function RelatedProductCard({
         </div>
 
         {/* Botón de acción */}
-        <button
-          onClick={() => onViewDetails?.(product.id)}
-          disabled={product.stock <= 0}
-          className={`w-full mt-2 md:mt-3 border-2 font-bold text-sm md:text-lg py-1.5 md:py-2.5 rounded-[10px] transition-colors
+        <Link
+          to={productUrl}
+          className={`w-full mt-2 md:mt-3 border-2 font-bold text-sm md:text-lg py-1.5 md:py-2.5 rounded-[10px] transition-colors text-center
             ${
               product.stock > 0
                 ? "border-[#027eb1] text-[#027eb1] hover:bg-blue-50 bg-white"
-                : "border-[#9ca3af] text-[#9ca3af] bg-[#f3f4f6] cursor-not-allowed"
+                : "border-[#9ca3af] text-[#9ca3af] bg-[#f3f4f6]"
             }`}
         >
-          {product.stock > 0 ? "Ver detalles" : "Agotado"}
-        </button>
+          {product.stock > 0 ? "Ver detalles" : "Ver producto agotado"}
+        </Link>
       </div>
     </div>
   );

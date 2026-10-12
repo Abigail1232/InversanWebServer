@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react';
 import svgr from 'vite-plugin-svgr';
 
 export default defineConfig(async () => {
+  const isSsrBuild = process.argv.includes('--ssr');
   const plugins = [react(), svgr()];
   if (process.env.ANALYZE) {
     const { visualizer } = await import('rollup-plugin-visualizer');
@@ -24,7 +25,7 @@ export default defineConfig(async () => {
     },
     build: {
       rollupOptions: {
-        output: {
+        output: isSsrBuild ? {} : {
           manualChunks: {
             'vendor-react': ['react', 'react-dom'],
             'vendor-router': ['react-router-dom'],

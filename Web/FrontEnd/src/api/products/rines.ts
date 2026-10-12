@@ -29,6 +29,10 @@ export type ProductoFiltroLlanta = {
   id_producto: number;
   marca: string;
   nombre_producto: string;
+  design?: string;
+  width?: string | number;
+  profile?: string | number;
+  rim?: string | number;
   precio_detalle: number;
   rin: number;
   alto_rin: number;

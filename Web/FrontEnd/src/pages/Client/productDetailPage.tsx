@@ -1,119 +1,207 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import ProductGallery from '../../components/product/ProductGallery';
 import ProductSpecs from '../../components/product/ProductSpecs';
 import WholesaleBanner from '../../components/product/WholesaleBanner';
 import ProductDescription from '../../components/product/ProductDescription';
 import RelatedProducts from '../../components/product/RelatedProducts';
 import QuantitySelector from '../../components/ui/QuantitySelector';
-import { Typography, message } from 'antd';
-
-import { getProductoById, getRelatedProducts, type RelatedSection } from '../../api/products/productos';
-import { addToCart } from '../../api/cart/cart';
-import { getPrivilegesUser, type Privilegio } from '../../api/auth/privileges';
+import type { RelatedSection } from '../../api/products/productos';
 import type { Product } from '../../types/product';
-import { crearVisita } from '../../api/products/visitas';
 import { usePreventDuplicate } from '../../hooks/usePreventDuplicateRequest';
 import { formatPrice } from '../../utils/formatPrice';
+import {
+  buildProductSeo,
+  buildTireSizeUrl,
+  extractProductIdFromSlug,
+  getCanonicalProductRedirect,
+} from '../../seo/productSeo';
+import { PUBLIC_SITE_URL } from '../../config/site';
+import { API_BASE_URL, buildProductImageUrl } from '../../config/api';
+import {
+  buildProductStructuredData,
+  serializeForScript,
+} from '../../seo/productStructuredData';
+import { buildBreadcrumbStructuredData } from '../../seo/globalStructuredData';
 
-export default function ProductDetailPage() {
-  const { id } = useParams<{ id: string }>();
-  const [product, setProduct] = useState<Product | null>(null);
-  const [loading, setLoading] = useState(true);
+interface ProductDetailPageProps {
+  initialProduct?: Product;
+}
+
+function getSelectedBranchId(): number | undefined {
+  if (typeof window === "undefined") return undefined;
+  const branchId = Number(window.localStorage.getItem("selectedBranch"));
+  return Number.isSafeInteger(branchId) && branchId > 0
+    ? branchId
+    : undefined;
+}
+
+export default function ProductDetailPage({ initialProduct }: ProductDetailPageProps) {
+  const { id, slug } = useParams<{ id?: string; slug?: string }>();
+  const navigate = useNavigate();
+  const productId = id ?? extractProductIdFromSlug(slug ?? "") ?? undefined;
+  const [product, setProduct] = useState<Product | null>(initialProduct ?? null);
+  const [publicAvailability, setPublicAvailability] = useState(() =>
+    initialProduct
+      ? { productId: String(initialProduct.id), stock: initialProduct.stock }
+      : null,
+  );
+  const [loading, setLoading] = useState(!initialProduct);
   const [error, setError] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [isWholesaleClient, setIsWholesaleClient] = useState(false);
   const [relatedSections, setRelatedSections] = useState<RelatedSection[]>([]);
   const [relatedLoading, setRelatedLoading] = useState(false);
   const [relatedError, setRelatedError] = useState<string | null>(null);
-  const navigate = useNavigate();
   const startTimeRef = useRef<number | null>(null);
+  const isCurrentProduct = Boolean(
+    product &&
+    productId &&
+    String(product.id) === String(productId),
+  );
 
   useEffect(() => {
-    if (!id) return;
+    if (!productId) return;
 
-    const branchStr = localStorage.getItem("selectedBranch");
-    const id_sucursal = branchStr ? Number(branchStr) : undefined;
+    let cancelled = false;
 
-    const fetchProduct = async () => {
+    const fetchProduct = async (
+      id_sucursal?: number,
+      availabilityOnly = false,
+    ) => {
       try {
-        setLoading(true);
-        const data = await getProductoById(Number(id), id_sucursal);
-        if (data.stock <= 0) {
-          navigate("/search", { replace: true, state: { noStockInBranch: true } });
-          return;
+        const { getProductoById } = await import('../../api/products/productos');
+        const data = await getProductoById(Number(productId), id_sucursal);
+        if (cancelled || String(data.id) !== String(productId)) return;
+        if (availabilityOnly) {
+          setPublicAvailability({ productId: String(data.id), stock: data.stock });
+        } else {
+          setProduct(data);
+          setError(null);
+          if (id_sucursal === undefined) {
+            setPublicAvailability({ productId: String(data.id), stock: data.stock });
+          }
         }
-        setProduct(data);
-      } catch (err) {
-        setError('Error al cargar el producto.');
+      } catch (error) {
+        if (!cancelled) {
+          if (availabilityOnly) {
+            console.error(
+              "Error al actualizar disponibilidad general del producto:",
+              error,
+            );
+          } else {
+            setError('Error al cargar el producto.');
+          }
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled && !availabilityOnly) setLoading(false);
       }
     };
 
     const checkWholesaleStatus = async () => {
       try {
+        const { getPrivilegesUser } = await import('../../api/auth/privileges');
         const privileges = await getPrivilegesUser();
-        const wholesale = privileges.some((p: Privilegio) => 
+        if (cancelled) return;
+        const wholesale = privileges.some((p) =>
           p.nombre === 'IS_MAYORIST' || p.nombre === 'ALL_ACCESS'
         );
         setIsWholesaleClient(wholesale);
       } catch (err) {
-        console.error("Error checking wholesale status:", err);
+        if (!cancelled) console.error("Error checking wholesale status:", err);
       }
     };
 
-    void fetchProduct();
+    if (
+      initialProduct &&
+      String(initialProduct.id) === String(productId)
+    ) {
+      setProduct(initialProduct);
+      setError(null);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
+    const selectedBranchId = getSelectedBranchId();
+    if (selectedBranchId === undefined) {
+      void fetchProduct();
+    } else {
+      void fetchProduct(undefined, true);
+      void fetchProduct(selectedBranchId);
+    }
     void checkWholesaleStatus();
-  }, [id, navigate]);
+    return () => {
+      cancelled = true;
+    };
+  }, [productId, initialProduct]);
 
   useEffect(() => {
-    if (!id || !product) return;
-    const branchStr = localStorage.getItem("selectedBranch");
-    const id_sucursal = branchStr ? Number(branchStr) : undefined;
+    if (!isCurrentProduct || !productId) return;
+    let cancelled = false;
+    const id_sucursal = getSelectedBranchId();
 
     const fetchRelated = async () => {
       setRelatedLoading(true);
       setRelatedError(null);
+      setRelatedSections([]);
       try {
-        const data = await getRelatedProducts(Number(id), id_sucursal);
-        setRelatedSections(data);
+        const { getRelatedProducts } = await import('../../api/products/productos');
+        const data = await getRelatedProducts(Number(productId), id_sucursal);
+        if (!cancelled) setRelatedSections(data);
       } catch {
-        setRelatedError('No se pudieron cargar los productos relacionados.');
-        setRelatedSections([]);
+        if (!cancelled) {
+          setRelatedError('No se pudieron cargar los productos relacionados.');
+          setRelatedSections([]);
+        }
       } finally {
-        setRelatedLoading(false);
+        if (!cancelled) setRelatedLoading(false);
       }
     };
     void fetchRelated();
-  }, [id, product?.id]);
+    return () => {
+      cancelled = true;
+    };
+  }, [isCurrentProduct, productId]);
 
   useEffect(() => {
-    if (!id) return;
+    if (!productId) return;
+    let cancelled = false;
     const onBranchChange = async () => {
-      const branchStr = localStorage.getItem("selectedBranch");
-      const id_sucursal = branchStr ? Number(branchStr) : undefined;
+      const id_sucursal = getSelectedBranchId();
       try {
-        const data = await getProductoById(Number(id), id_sucursal);
+        const { getProductoById, getRelatedProducts } = await import('../../api/products/productos');
+        const data = await getProductoById(Number(productId), id_sucursal);
+        if (cancelled || String(data.id) !== String(productId)) return;
         setProduct(data);
-        if (data.stock <= 0) {
-          navigate("/search", { replace: true, state: { noStockInBranch: true } });
-        } else {
-          setQuantity((q) => Math.min(Math.max(1, q), data.stock));
-        }
-        const related = await getRelatedProducts(Number(id), id_sucursal);
+        setQuantity((q) => Math.min(Math.max(1, q), data.stock || 1));
+        const related = await getRelatedProducts(Number(productId), id_sucursal);
+        if (cancelled) return;
         setRelatedSections(related);
         setRelatedError(null);
       } catch {
-        setError('Error al actualizar producto.');
+        if (!cancelled) setError('Error al actualizar producto.');
       }
     };
     window.addEventListener("branchChanged", onBranchChange);
-    return () => window.removeEventListener("branchChanged", onBranchChange);
-  }, [id, navigate]);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("branchChanged", onBranchChange);
+    };
+  }, [productId]);
 
   useEffect(() => {
-    if (!product?.id) return;
+    const canonicalRedirect = getCanonicalProductRedirect(
+      product,
+      productId,
+      slug,
+    );
+    if (canonicalRedirect) {
+      navigate(canonicalRedirect, { replace: true });
+    }
+  }, [navigate, product, productId, slug]);
+
+  useEffect(() => {
+    if (!isCurrentProduct || !product?.id) return;
 
     startTimeRef.current = Date.now();
 
@@ -123,8 +211,7 @@ export default function ProductDetailPage() {
         // Convertir a segundos para que el backend lo guarde correctamente
         const tiempoSegundos = Math.floor(tiempoMs / 1000);
 
-        const branchStr = localStorage.getItem("selectedBranch");
-        const id_sucursal = branchStr ? Number(branchStr) : undefined;
+        const id_sucursal = getSelectedBranchId();
 
         const visitaProd = {
           id_producto: parseInt(product.id),
@@ -133,20 +220,160 @@ export default function ProductDetailPage() {
           id_sucursal,
         };
 
-        crearVisita(visitaProd);
+        void import('../../api/products/visitas').then(({ crearVisita }) =>
+          crearVisita(visitaProd),
+        );
       }
     };
 
-  }, [id, product?.id]);
+  }, [isCurrentProduct, productId, product?.id]);
+
+  useEffect(() => {
+    if (!isCurrentProduct || !product) return;
+    const seo = buildProductSeo(product);
+    const canonical = new URL(seo.canonicalPath, PUBLIC_SITE_URL).toString();
+    const image = buildProductImageUrl(product.images[0]?.url);
+    document.title = seo.title;
+    document.documentElement.lang = "es-HN";
+
+    const setMeta = (
+      attribute: "name" | "property",
+      key: string,
+      content: string,
+    ) => {
+      let element = document.head.querySelector<HTMLMetaElement>(
+        `meta[data-inversan-product-seo="true"][${attribute}="${key}"]`,
+      );
+      if (!element) {
+        element = document.createElement("meta");
+        element.setAttribute(attribute, key);
+        element.dataset.inversanProductSeo = "true";
+        document.head.appendChild(element);
+      }
+      element.content = content;
+    };
+    setMeta("name", "description", seo.description);
+    setMeta("property", "og:type", "product");
+    setMeta("property", "og:title", seo.title);
+    setMeta("property", "og:description", seo.description);
+    setMeta("property", "og:url", canonical);
+    setMeta("name", "twitter:card", "summary_large_image");
+    setMeta("name", "twitter:title", seo.title);
+    setMeta("name", "twitter:description", seo.description);
+    if (image) {
+      setMeta("property", "og:image", image);
+      setMeta("name", "twitter:image", image);
+    }
+
+    let canonicalLink = document.head.querySelector<HTMLLinkElement>(
+      'link[rel="canonical"][data-inversan-product-seo="true"]',
+    );
+    if (!canonicalLink) {
+      canonicalLink = document.createElement("link");
+      canonicalLink.rel = "canonical";
+      canonicalLink.dataset.inversanProductSeo = "true";
+      document.head.appendChild(canonicalLink);
+    }
+    canonicalLink.href = canonical;
+    return () => {
+      document.head
+        .querySelectorAll('[data-inversan-product-seo="true"]')
+        .forEach((element) => element.remove());
+      document.title = "Inversan";
+    };
+  }, [isCurrentProduct, product, productId]);
+
+  useEffect(() => {
+    if (
+      !isCurrentProduct ||
+      !product ||
+      publicAvailability?.productId !== String(productId)
+    ) {
+      return;
+    }
+
+    const structuredData = buildProductStructuredData(product, {
+      siteUrl: PUBLIC_SITE_URL,
+      apiBaseUrl: API_BASE_URL,
+      availabilityStock: publicAvailability.stock,
+      isTireProduct: true,
+    });
+    const existingScripts = document.head.querySelectorAll<HTMLScriptElement>(
+      'script[type="application/ld+json"][data-inversan-product-jsonld="true"]',
+    );
+    const script =
+      existingScripts[0] ?? document.createElement("script");
+    existingScripts.forEach((existing, index) => {
+      if (index > 0) existing.remove();
+    });
+    script.type = "application/ld+json";
+    script.dataset.inversanProductJsonld = "true";
+    script.textContent = serializeForScript(structuredData);
+    if (!script.isConnected) document.head.appendChild(script);
+
+    return () => {
+      document.head
+        .querySelectorAll(
+          'script[type="application/ld+json"][data-inversan-product-jsonld="true"]',
+        )
+        .forEach((existing) => existing.remove());
+    };
+  }, [isCurrentProduct, product, productId, publicAvailability]);
+
+  useEffect(() => {
+    if (!isCurrentProduct || !product) return;
+    const seo = buildProductSeo(product);
+    const dimensionValue = (label: string) =>
+      product.specs.find(
+        (spec) => spec.label.toLowerCase() === label.toLowerCase(),
+      )?.value;
+    const sizePath = buildTireSizeUrl(
+      dimensionValue("Alto"),
+      dimensionValue("Perfil"),
+      dimensionValue("Rin"),
+    );
+    const items = [
+      { name: "Inicio", path: "/" },
+      ...(sizePath
+        ? [{ name: `Llantas ${seo.measure}`, path: sizePath }]
+        : []),
+      { name: seo.heading, path: seo.canonicalPath },
+    ];
+    const scripts = document.head.querySelectorAll<HTMLScriptElement>(
+      'script[type="application/ld+json"][data-inversan-client-breadcrumbs="true"]',
+    );
+    const script = scripts[0] ?? document.createElement("script");
+    scripts.forEach((existing, index) => {
+      if (index > 0) existing.remove();
+    });
+    script.type = "application/ld+json";
+    script.dataset.inversanClientBreadcrumbs = "true";
+    script.textContent = serializeForScript(
+      buildBreadcrumbStructuredData(items, PUBLIC_SITE_URL),
+    );
+    if (!script.isConnected) document.head.append(script);
+    return () => {
+      document.head
+        .querySelectorAll(
+          'script[type="application/ld+json"][data-inversan-client-breadcrumbs="true"]',
+        )
+        .forEach((existing) => existing.remove());
+    };
+  }, [isCurrentProduct, product, productId]);
 
   const handleAddToCart = async () => {
     if (product) {
       if (product.stock <= 0) {
+        const { message } = await import('antd');
         message.warning('Este producto no tiene unidades disponibles en este momento.');
         return;
       }
 
       try {
+        const [{ addToCart }, { message }] = await Promise.all([
+          import('../../api/cart/cart'),
+          import('antd'),
+        ]);
         const branchStr = localStorage.getItem("selectedBranch");
         const id_branch = branchStr ? Number(branchStr) : 1;
 
@@ -157,7 +384,8 @@ export default function ProductDetailPage() {
         } else {
           message.error('No se pudo agregar el producto al carrito. Verifique la disponibilidad en su sucursal.');
         }
-      } catch (err) {
+      } catch {
+        const { message } = await import('antd');
         message.error('Ocurrió un error al intentar agregar al carrito.');
       }
     }
@@ -165,7 +393,7 @@ export default function ProductDetailPage() {
 
   const { execute: handleAddToCartPrevented, isLoading: isAddingToCart } = usePreventDuplicate(handleAddToCart);
 
-  if (loading) {
+  if (loading || (product !== null && !isCurrentProduct)) {
     return <div className="flex items-center justify-center min-h-screen bg-[#f3f4f6]">Cargando...</div>;
   }
 
@@ -177,11 +405,36 @@ export default function ProductDetailPage() {
   const showStrikethroughPrice =
     hasPromotionDiscount &&
     Boolean(product.originalPrice);
+  const productHeading = buildProductSeo(product).heading;
 
   return (
     <>
       <div className="w-full max-w-[100vw] bg-[#f3f4f6] min-h-screen overflow-x-hidden">
         <div className="max-w-[1280px] mx-auto px-4 py-4 md:py-8 flex flex-col gap-8 md:gap-12 animate-page-enter">
+          <nav aria-label="Breadcrumb" className="text-sm text-gray-600">
+            <Link to="/" className="hover:underline">Inicio</Link>
+            {buildTireSizeUrl(
+              product.specs.find((spec) => spec.label.toLowerCase() === "alto")?.value,
+              product.specs.find((spec) => spec.label.toLowerCase() === "perfil")?.value,
+              product.specs.find((spec) => spec.label.toLowerCase() === "rin")?.value,
+            ) && (
+              <>
+                <span aria-hidden="true"> / </span>
+                <Link
+                  to={buildTireSizeUrl(
+                    product.specs.find((spec) => spec.label.toLowerCase() === "alto")?.value,
+                    product.specs.find((spec) => spec.label.toLowerCase() === "perfil")?.value,
+                    product.specs.find((spec) => spec.label.toLowerCase() === "rin")?.value,
+                  )}
+                  className="hover:underline"
+                >
+                  Llantas {buildProductSeo(product).measure}
+                </Link>
+              </>
+            )}
+            <span aria-hidden="true"> / </span>
+            <span>{productHeading}</span>
+          </nav>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 items-start">
             {/* En móvil: galería arriba; en desktop: galería a la izquierda */}
@@ -197,9 +450,9 @@ export default function ProductDetailPage() {
                   {product.brand || 'Marca no especificada'}
                 </p>
                 <div className="flex items-start justify-between gap-2">
-                  <Typography.Title level={2} style={{ marginBottom: 4, fontFamily: 'Arimo, sans-serif', fontWeight: 400 }}>
-                    {product.name}
-                  </Typography.Title>
+                  <h1 style={{ marginBottom: 4, fontFamily: 'Arimo, sans-serif', fontWeight: 400 }} className="text-2xl md:text-3xl">
+                    {productHeading}
+                  </h1>
                   <InfoTooltip />
                 </div>
                 <p className="text-sm md:text-base text-[#4a4a4a]">{product.category}</p>
@@ -236,7 +489,7 @@ export default function ProductDetailPage() {
               <div className="flex items-center gap-2">
                 <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${product.stock > 0 ? "bg-[#00a65a]" : "bg-[#d61216]"}`} />
                 <span className={`text-base md:text-lg ${product.stock > 0 ? "text-[#4a4a4a]" : "text-[#d61216] font-medium"}`}>
-                  {product.stock > 0 ? `${product.stock} unidades disponibles` : 'Sin unidades disponibles'}
+                  {product.stock > 0 ? `${product.stock} unidades disponibles` : 'Agotado temporalmente'}
                 </span>
               </div>
 
@@ -284,10 +537,6 @@ export default function ProductDetailPage() {
                 key={`${section.spec}-${section.value}-${idx}`}
                 sectionTitle={`Productos con la misma ${section.spec}: ${section.value}`}
                 products={section.products}
-                onViewDetails={(productId) => {
-                navigate(`/product/${productId}`);
-                window.scrollTo(0, 0); // Scroll al inicio de la página
-    }}
               />
             ))}
         </div>

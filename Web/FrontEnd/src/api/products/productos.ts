@@ -91,6 +91,7 @@ export async function getProductoById(
       brand: data.marca || "",
       company: "",
       name: data.nombre,
+      design: data.diseno?.nombre || undefined,
       category: data.categoria || "",
       price: safePrice(data.precios?.detalle ?? 0),
       originalPrice: undefined,
@@ -123,7 +124,6 @@ export async function getProductoById(
 
     const ahora = new Date();
 
-    console.log(data);
     const promocionesActivas = (data.promociones ?? []).filter(
       (p: ProductPromotion) =>
         p.descuento > 0 &&

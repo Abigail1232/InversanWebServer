@@ -3,7 +3,6 @@ import RelatedProductCard from './RelatedProductCard';
 
 interface Props {
   products: RelatedProduct[];
-  onViewDetails?: (id: string) => void;
   sectionSpecs?: string[];
   /** Si se pasa, se muestra una sola sección con este título (ej. "Productos con el mismo Rin: 16 pulgadas") */
   sectionTitle?: string;
@@ -11,7 +10,7 @@ interface Props {
   displayMode?: "porcentaje" | "precio_tachado";
 }
 
-export default function RelatedProducts({ products, onViewDetails, sectionSpecs, sectionTitle, displayMode = "precio_tachado" }: Props) {
+export default function RelatedProducts({ products, sectionSpecs, sectionTitle, displayMode = "precio_tachado" }: Props) {
   const useSingleTitle = sectionTitle != null && sectionTitle !== '';
   const specsToUse = useSingleTitle
     ? [sectionTitle]
@@ -50,7 +49,6 @@ export default function RelatedProducts({ products, onViewDetails, sectionSpecs,
       <div key={`${product.id}-${index}`} className="flex-shrink-0 w-[290px]">
         <RelatedProductCard
           product={product}
-          onViewDetails={onViewDetails}
           displayMode={displayMode}
         />
       </div>

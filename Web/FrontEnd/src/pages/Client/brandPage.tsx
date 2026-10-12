@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { PictureOutlined } from '@ant-design/icons';
 import { Typography, Pagination } from 'antd';
 import RelatedProductCard from '../../components/product/RelatedProductCard';
@@ -8,7 +8,6 @@ import { getProductsByBrand, PAGE_SIZE } from '../../api/products/brands';
 import { API_BASE_URL } from '../../config/api';
 
 export default function MarcaProductosPage() {
-    const navigate = useNavigate();
     const { id } = useParams();
     const [brandName, setBrandName] = useState('Marca');
     const [bannerUrl, setBannerUrl] = useState<string | null>(null);
@@ -51,6 +50,10 @@ export default function MarcaProductosPage() {
                     id: product.id,
                     brand: product.brand,
                     name: product.name,
+                    design: product.design,
+                    width: product.width,
+                    profile: product.profile,
+                    rim: product.rim,
                     price: product.price,
                     originalPrice: product.originalPrice,
                     discountPercent: product.discountPercent,
@@ -129,7 +132,6 @@ export default function MarcaProductosPage() {
                                     key={product.id}
                                     product={product}
                                     displayMode={product.promotionDisplayMode ?? "precio_tachado"}
-                                    onViewDetails={(productId) => navigate(`/product/${productId}`)}
                                 />
                             ))}
                         </div>

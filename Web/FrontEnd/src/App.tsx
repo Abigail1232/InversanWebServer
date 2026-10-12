@@ -1,29 +1,42 @@
-import { lazy, Suspense } from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { lazy, Suspense, useEffect, useState } from "react";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  useLocation,
+  useNavigate,
+  useParams,
+} from "react-router-dom";
 import "./App.css";
 import ScrollToTop from "./components/ScrollToTop";
 
 import LoadingScreen from "./components/LoadingScreen";
 import ErrorBoundary from "./components/ErrorBoundary";
+import PageLayout from "./pages/PageLayout";
+import ProductDetailPage from "./pages/Client/productDetailPage";
+import HomePage from "./pages/Client/home";
+import type { Product } from "./types/product";
+import TireSizePage from "./pages/Client/TireSizePage";
+import VehicleTirePage from "./pages/Client/VehicleTirePage";
+import type {
+  TireSizeLandingData,
+  VehicleLandingData,
+} from "./api/seo";
+import { parseTireSizeSlug } from "./seo/productSeo";
 
 const DesignManagement = lazy(() => import("./pages/admin/DesignManagement"));
 const Login = lazy(() => import("./pages/Auth/Login"));
 const Register = lazy(() => import("./pages/Auth/Register"));
-const PageLayout = lazy(() => import("./pages/PageLayout"));
 const Orders = lazy(() => import("./pages/Client/orders"));
 const GuestOrderView = lazy(() => import("./pages/Client/GuestOrderView"));
 const OrderVerifier = lazy(() => import("./pages/Client/OrderVerifier"));
 const DeliveryHistory = lazy(() => import("./pages/Client/deliveryHistory"));
-const ProductDetailPage = lazy(
-  () => import("./pages/Client/productDetailPage")
-);
 const SearchPage = lazy(() => import("./pages/Client/searchPage"));
 const PromotionPage = lazy(() => import("./pages/Client/promotion"));
 const BrandPage = lazy(() => import("./pages/Client/brandPage"));
 const AdminUsers = lazy(() => import("./pages/admin/AdminUsers"));
 const AdminPermisos = lazy(() => import("./pages/admin/AdminPermisos"));
 const AdminBiometrics = lazy(() => import("./pages/admin/AdminBiometrics"));
-const HomePage = lazy(() => import("./pages/Client/home"));
 const ProfilePage = lazy(() => import("./pages/Client/profile"));
 const ChangePasswordPage = lazy(() => import("./pages/Client/changePassword"));
 const ForgotPasswordPage = lazy(() => import("./pages/Client/forgotPassword"));
@@ -61,15 +74,99 @@ const AdminGuard = lazy(() => import("./components/AdminGuard"));
 const DeliveryHistoryGuard = lazy(() => import("./components/DeliveryHistoryGuard"));
 const ClientGuard = lazy(() => import("./components/ClientGuard"));
 
+function LegacyProductRedirect() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [destination, setDestination] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!id || !/^\d+$/.test(id)) {
+      setDestination("/search");
+      return;
+    }
+    void import("./api/products/productos")
+      .then(({ getProductoById }) => getProductoById(Number(id)))
+      .then((product) =>
+        import("./seo/productSeo").then(({ buildProductUrl }) =>
+          setDestination(buildProductUrl(product)),
+        ),
+      )
+      .catch(() => setDestination("/search"));
+  }, [id]);
+
+  useEffect(() => {
+    if (destination) navigate(destination, { replace: true });
+  }, [destination, navigate]);
+
+  return null;
+}
+
+function RouteRobots() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    const path = pathname.replace(/\/+$/, "") || "/";
+    const noindexPrefixes = [
+      "/login",
+      "/register",
+      "/forgot-password",
+      "/profile",
+      "/cart",
+      "/checkout",
+      "/orders",
+      "/notification",
+      "/admin",
+      "/mi-asistencia",
+      "/marcar-mi-asistencia",
+      "/asistencia",
+      "/reportes",
+      "/delivery",
+      "/search",
+      "/suggestions",
+      "/promotion",
+      "/brand",
+    ];
+    const noindex = noindexPrefixes.some(
+      (prefix) => path === prefix || path.startsWith(`${prefix}/`),
+    );
+    let robots = document.querySelector<HTMLMetaElement>('meta[name="robots"]');
+    if (!robots) {
+      robots = document.createElement("meta");
+      robots.name = "robots";
+      document.head.append(robots);
+    }
+    robots.content = path === "/brand" || path.startsWith("/brand/")
+      ? "noindex,follow"
+      : noindex
+        ? "noindex,nofollow"
+        : "index,follow";
+  }, [pathname]);
+  return null;
+}
+
 /**
  * Componente raíz de la aplicación React.
  *
  * Define el enrutamiento principal, la carga perezosa de pantallas y el
  * manejo de errores global en la interfaz de usuario.
  */
-function App() {
+interface AppRoutesProps {
+  initialProduct?: Product;
+  initialTireSizeData?: TireSizeLandingData;
+  initialVehicleData?: VehicleLandingData;
+  initialBranch?: number;
+  initialMenuOpen?: boolean;
+}
+
+export function AppRoutes({
+  initialProduct,
+  initialTireSizeData,
+  initialVehicleData,
+  initialBranch,
+  initialMenuOpen,
+}: AppRoutesProps) {
   return (
-    <Router>
+    <>
+      <RouteRobots />
       <ScrollToTop />
       <ErrorBoundary>
         <Suspense fallback={<LoadingScreen />}>
@@ -84,9 +181,30 @@ function App() {
               element={<OrderVerifier />}
             />
 
-            <Route path="/" element={<PageLayout />}>
+            <Route
+              path="/"
+              element={
+                <PageLayout
+                  initialBranch={initialBranch}
+                  initialMenuOpen={initialMenuOpen}
+                />
+              }
+            >
               <Route index element={<HomePage />} />
               <Route path="home" element={<HomePage />} />
+              <Route
+                path="llantas/vehiculo/:brand/:model/:year/:version?"
+                element={<VehicleTirePage initialData={initialVehicleData} />}
+              />
+              <Route
+                path="llantas/:slug"
+                element={
+                  <LandingOrProductRoute
+                    initialProduct={initialProduct}
+                    initialTireSizeData={initialTireSizeData}
+                  />
+                }
+              />
               <Route path="profile" element={<ProfilePage />} />
               <Route path="mi-asistencia" element={<MyAttendance />} />
               <Route path="marcar-mi-asistencia" element={<SelfAttendance />} />
@@ -116,7 +234,7 @@ function App() {
                 <Route path="contact" element={<ContactPage />} />
                 <Route path="suggestions" element={<Suggestions />} />
                 <Route path="cart" element={<CartPage />} />
-                <Route path="product/:id" element={<ProductDetailPage />} />
+                <Route path="product/:id" element={<LegacyProductRedirect />} />
                 <Route path="promotion/:id" element={<PromotionPage />} />
                 <Route path="brand/:id" element={<BrandPage />} />
               </Route>
@@ -176,7 +294,27 @@ function App() {
           </Routes>
         </Suspense>
       </ErrorBoundary>
-    </Router>
+    </>
+  );
+}
+
+function LandingOrProductRoute({
+  initialProduct,
+  initialTireSizeData,
+}: Pick<AppRoutesProps, "initialProduct" | "initialTireSizeData">) {
+  const { slug = "" } = useParams();
+  return parseTireSizeSlug(slug) ? (
+    <TireSizePage initialData={initialTireSizeData} />
+  ) : (
+    <ProductDetailPage initialProduct={initialProduct} />
+  );
+}
+
+function App() {
+  return (
+    <BrowserRouter>
+      <AppRoutes />
+    </BrowserRouter>
   );
 }
 

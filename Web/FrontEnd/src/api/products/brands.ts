@@ -10,6 +10,10 @@ export interface BrandProductItem {
   id: string;
   name: string;
   brand: string;
+  design?: string;
+  width?: string | number;
+  profile?: string | number;
+  rim?: string | number;
   price: number;
   originalPrice?: number;
   discountPercent?: number;
@@ -56,9 +60,14 @@ interface BrandProductsResponse {
       id_producto: number;
       nombre: string;
       marca: string;
+      design?: string;
+      width?: string | number;
+      profile?: string | number;
+      rim?: string | number;
       precio_detalle: number;
       precio_original?: number;
       descuento?: number;
+      promotionDisplayMode?: "porcentaje" | "precio_tachado";
       imagen_principal: string | null;
       stock_total: number;
     }>;
@@ -122,10 +131,14 @@ export async function getProductsByBrand(
       id: String(item.id_producto),
       name: item.nombre,
       brand: item.marca,
+      design: item.design,
+      width: item.width,
+      profile: item.profile,
+      rim: item.rim,
       price: item.precio_detalle,
       originalPrice: item.precio_original,
       discountPercent: item.descuento,
-      promotionDisplayMode: (item as any).promotionDisplayMode,
+      promotionDisplayMode: item.promotionDisplayMode,
       imageUrl: item.imagen_principal ?? "",
       stock: item.stock_total,
     })),
@@ -180,4 +193,3 @@ export async function getBrandVersions(
     name,
   }));
 }
-

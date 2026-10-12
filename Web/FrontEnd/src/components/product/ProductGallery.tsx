@@ -99,7 +99,7 @@ export default function ProductGallery({ images, model3DUrl }: Props) {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [modalOpen, modal3DOpen]);
+  }, [images.length, modalOpen, modal3DOpen]);
 
   // Desactivar zoom principal cuando se abre el modal
   useEffect(() => {
@@ -140,6 +140,9 @@ export default function ProductGallery({ images, model3DUrl }: Props) {
             <img
               src={`${API_BASE_URL}/public/${images[current].url}`}
               alt={images[current].alt}
+              loading="eager"
+              fetchPriority="high"
+              decoding="async"
               className={`w-full h-full object-cover transition-transform duration-200 ${
                 isMainZoomed ? 'scale-150' : 'scale-100'
               }`}
@@ -186,7 +189,13 @@ export default function ProductGallery({ images, model3DUrl }: Props) {
                   }`}
                 aria-label={`Ver ${img.alt}`}
               >
-                <img src={`${API_BASE_URL}/public/${img.url}`} alt={img.alt} className="w-full h-full object-cover" />
+                <img
+                  src={`${API_BASE_URL}/public/${img.url}`}
+                  alt={img.alt}
+                  loading="lazy"
+                  decoding="async"
+                  className="w-full h-full object-cover"
+                />
               </button>
             ))}
           </div>

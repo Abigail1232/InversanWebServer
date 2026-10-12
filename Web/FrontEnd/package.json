@@ -5,7 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && npm run build:ssr",
+    "build:ssr": "vite build --ssr src/entry-server.tsx --outDir dist/server --emptyOutDir false && esbuild dist/server/entry-server.js --bundle --platform=node --format=esm --packages=bundle --external:react --external:react-dom --external:antd --external:@ant-design/icons --external:axios --external:lucide-react --outfile=dist/server/entry-server.bundle.js",
+    "start:ssr": "node server/index.js",
+    "test:seo": "npm run build:ssr && node --experimental-strip-types --test tests/productSeo.test.ts && node --test server/index.test.js",
     "build:analyze": "cross-env ANALYZE=1 vite build",
     "lint": "eslint .",
     "preview": "vite preview"

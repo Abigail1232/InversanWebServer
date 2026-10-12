@@ -56,6 +56,7 @@ export interface ShoppingHeaderProps {
   branches: Sucursal[];
   initBranch: number;
   setInitBranch: (value: number) => void;
+  initialMenuOpen?: boolean;
 }
 
 export type Branch = { id: number; name: string };
@@ -110,7 +111,7 @@ const getDefaultSidebarOpen = (): boolean => {
 };
 
 const ShoppingHeader = forwardRef<ShoppingHeaderHandle, ShoppingHeaderProps>(
-  ({ branches, initBranch, setInitBranch }, ref) => {
+  ({ branches, initBranch, setInitBranch, initialMenuOpen }, ref) => {
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -122,8 +123,11 @@ const ShoppingHeader = forwardRef<ShoppingHeaderHandle, ShoppingHeaderProps>(
     );
     const [subMenuItems, setSubMenuItems] =
       useState<SubMenuItem[]>(SubMenuData);
-    const [menuOpen, setMenuOpen] = useState<boolean>(getDefaultSidebarOpen);
+    const [menuOpen, setMenuOpen] = useState<boolean>(
+      () => initialMenuOpen ?? getDefaultSidebarOpen(),
+    );
     const [isDesktop, setIsDesktop] = useState<boolean>(() => {
+      if (initialMenuOpen !== undefined) return true;
       if (typeof window === "undefined") return true;
       return window.innerWidth >= SIDEBAR_BREAKPOINT;
     });

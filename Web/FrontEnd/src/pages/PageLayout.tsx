@@ -14,17 +14,26 @@ const LOCAL_STORAGE_KEY = "selectedBranch";
 const BRANCH_CHANGED_EVENT = "branchChanged";
 const BRANCHES_UPDATED_EVENT = "branchesUpdated";
 
+interface PageLayoutProps {
+  initialBranch?: number;
+  initialMenuOpen?: boolean;
+}
 
-export default function PageLayout(): React.JSX.Element | null {
+export default function PageLayout({
+  initialBranch,
+  initialMenuOpen,
+}: PageLayoutProps): React.JSX.Element | null {
   const location = useLocation();
   const navigate = useNavigate();
   const [staffRedirectCheck, setStaffRedirectCheck] = useState<
     "pending" | "client" | "staff"
-  >("pending");
+  >(() => (initialMenuOpen ? "client" : "pending"));
 
   const [branches, setBranches] = useState<Sucursal[]>([]);
   const [initBranch, setInitBranch] = useState<number>(() => {
-    const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (initialBranch !== undefined) return initialBranch;
+    if (typeof window === "undefined") return 0;
+    const saved = window.localStorage.getItem(LOCAL_STORAGE_KEY);
     return saved ? Number(saved) : 0;
   });
 
@@ -157,6 +166,7 @@ export default function PageLayout(): React.JSX.Element | null {
         branches={branches}
         initBranch={initBranch}
         setInitBranch={handleBranchChange}
+        initialMenuOpen={initialMenuOpen}
       />
 
       <div

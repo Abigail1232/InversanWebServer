@@ -167,8 +167,76 @@ WebInversan/
 ### Frontend
 - `npm run dev`: Ejecuta el servidor de desarrollo de Vite
 - `npm run build`: Construye la aplicación para producción
+- `npm run build:ssr`: Construye el renderer SSR público
+- `npm run start:ssr`: Sirve la SPA y las páginas SSR de llantas en el puerto 5000
+- `npm run test:seo`: Ejecuta pruebas de slugs y rutas SSR
 - `npm run preview`: Vista previa de la build de producción
 - `npm run lint`: Ejecuta ESLint
+
+### SSR de productos públicos
+
+El frontend conserva React/Vite para el resto del sitio. El contenedor de producción
+usa un servidor Node pequeño para renderizar dinámicamente `/llantas/:slug` y
+redirigir `/product/:id`; precio e inventario no se dejan en caché. El servidor
+consulta la API interna mediante `SSR_API_URL`, mientras `PUBLIC_API_URL` se usa
+para generar URLs públicas de imágenes y `PUBLIC_SITE_URL` para canonical/OG.
+Ninguna respuesta SSR expone el costo interno del producto.
+
+Para probar con el backend local activo, primero construye en
+`Web/FrontEnd`:
+
+```powershell
+$env:VITE_API_URL = "http://localhost:3000"
+$env:VITE_PUBLIC_SITE_URL = "http://localhost:5000"
+npm ci
+npm run build
+$env:SSR_API_URL = "http://localhost:3000"
+$env:PUBLIC_API_URL = "http://localhost:3000"
+$env:PUBLIC_SITE_URL = "http://localhost:5000"
+npm run start:ssr
+```
+
+En otra terminal, usa el slug de un producto existente:
+
+```powershell
+$url = "http://localhost:5000/llantas/roadx-265-65-r17-rxmotion-123"
+curl.exe -i $url
+curl.exe -s $url | Select-String -Pattern "<title>|265/65R17|Lps\.|Descripción"
+curl.exe -i "http://localhost:5000/product/123"
+```
+
+La primera URL devuelve `200` con el producto en el HTML inicial; una URL
+`/product/:id` o un slug incorrecto con ID existente responde `301`; un ID
+inexistente responde `404` y lleva `noindex`. El servidor Vite de desarrollo
+(`npm run dev`) sigue siendo para HMR; para comprobar SSR local se usa la build
+y `npm run start:ssr`.
+
+Las páginas SSR de llantas incluyen Product y Offer JSON-LD en el `<head>`.
+La disponibilidad estructurada representa el stock total de todas las
+sucursales; después de hidratar, la interfaz puede mostrar el stock de la
+sucursal seleccionada sin alterar esa disponibilidad pública. La página se
+sirve sin caché para que el siguiente SSR refleje el stock y precio actuales.
+No se emite `itemCondition`, ya que el catálogo no identifica explícitamente
+si un artículo es nuevo o usado.
+
+Después del despliegue, valida una URL pública con
+[Google Rich Results Test](https://search.google.com/test/rich-results). Para
+comprobar el SSR local sin ejecutar JavaScript, inspecciona el origen de la
+página o ejecuta:
+
+```powershell
+curl.exe -s $url | Select-String -Pattern 'application/ld\+json|schema.org/(InStock|OutOfStock)'
+```
+
+El JSON-LD del origen incluye solo precio de detalle público (incluida una
+promoción activa), stock general, imágenes públicas y especificaciones; no
+incluye costo, mayoreo, margen ni inventario privado por bodega.
+
+Las páginas de medida y vehículo se publican solo cuando existen productos
+activos con esa medida o una asociación explícita `Modelo_Producto`. El
+sitemap y el feed RSS de Merchant Center se sirven en `/sitemap.xml` y
+`/google-merchant.xml`; la configuración de Search Console y validación está
+documentada en [docs/GOOGLE_SEO_SETUP.md](docs/GOOGLE_SEO_SETUP.md).
 
 ## Control de Versiones y Changelog
 

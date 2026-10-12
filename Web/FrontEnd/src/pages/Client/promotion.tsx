@@ -1,4 +1,4 @@
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { PictureOutlined } from "@ant-design/icons";
 import { Typography, Pagination } from "antd";
 import { useEffect, useState } from "react";
@@ -12,7 +12,6 @@ import RelatedProductCard from "../../components/product/RelatedProductCard";
 import { API_BASE_URL } from "../../config/api";
 
 export default function PromocionesPage() {
-  const navigate = useNavigate();
   const { id } = useParams();
   const [promo, setPromo] = useState<Promotion>();
   const [promotions, setPromotions] = useState<RelatedProduct[]>([]);
@@ -128,7 +127,6 @@ export default function PromocionesPage() {
                   <RelatedProductCard
                     key={product.id}
                     product={product}
-                    onViewDetails={(productId) => navigate(`/product/${productId}`)}
                   />
                 ))}
               </div>

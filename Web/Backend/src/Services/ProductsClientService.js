@@ -340,6 +340,10 @@ class ProductsClientService {
           id_producto: true,
           nombre: true,
           precio_detalle: true,
+          ancho_rin: true,
+          alto_rin: true,
+          rin: true,
+          diseno: { select: { nombre: true } },
           marca: { select: { nombre: true } },
           modelo_producto: { include: { modelo: true } },
           producto_imagen: {
@@ -432,6 +436,10 @@ class ProductsClientService {
         id_producto: p.id_producto,
         nombre: p.nombre,
         marca: p.marca?.nombre || "N/A",
+        width: p.ancho_rin,
+        profile: p.alto_rin,
+        rim: p.rin,
+        design: p.diseno?.nombre || "",
         modelos: p.modelo_producto.map((mp) => mp.modelo.nombre),
         precio_detalle: parseFloat(precioConDescuento.toFixed(2)),
         precio_original: parseFloat(p.precio_detalle.toFixed(2)),
@@ -495,6 +503,10 @@ class ProductsClientService {
           id_producto: true,
           nombre: true,
           precio_detalle: true,
+          ancho_rin: true,
+          alto_rin: true,
+          rin: true,
+          diseno: { select: { nombre: true } },
           marca: { select: { id_marca: true, nombre: true } },
           modelo_producto: { include: { modelo: true } },
           producto_imagen: {
@@ -582,6 +594,10 @@ class ProductsClientService {
         id_producto: p.id_producto,
         nombre: p.nombre,
         marca: p.marca.nombre,
+        width: p.ancho_rin,
+        profile: p.alto_rin,
+        rim: p.rin,
+        design: p.diseno?.nombre || "",
         modelos: p.modelo_producto.map((mp) => mp.modelo.nombre),
         precio_detalle: parseFloat(precioConDescuento.toFixed(2)),
         precio_original: parseFloat(precioOriginal.toFixed(2)),
@@ -646,7 +662,10 @@ class ProductsClientService {
           nombre: true,
           precio_detalle: true,
           precio_mayoreo: true,
+          ancho_rin: true,
+          alto_rin: true,
           rin: true,
+          diseno: { select: { nombre: true } },
           marca: { select: { nombre: true } },
           categoria: { select: { nombre: true } },
           modelo_producto: { include: { modelo: true } },
@@ -741,6 +760,10 @@ class ProductsClientService {
         id_producto: p.id_producto,
         nombre: p.nombre,
         rin: p.rin,
+        width: p.ancho_rin,
+        profile: p.alto_rin,
+        rim: p.rin,
+        design: p.diseno?.nombre || "",
         marca: p.marca?.nombre || "N/A",
         categoria: p.categoria?.nombre || "N/A",
         modelos: p.modelo_producto.map((mp) => mp.modelo.nombre),
@@ -830,6 +853,7 @@ class ProductsClientService {
       take: 4,
       include: {
         marca: { select: { nombre: true } },
+        diseno: { select: { nombre: true } },
         producto_imagen: { orderBy: { orden: "asc" }, take: 1 },
         producto_promocion: {
           where: {
@@ -872,6 +896,7 @@ class ProductsClientService {
       take: 4,
       include: {
         marca: { select: { nombre: true } },
+        diseno: { select: { nombre: true } },
         producto_imagen: { orderBy: { orden: "asc" }, take: 1 },
         producto_promocion: {
           where: {
@@ -949,6 +974,10 @@ class ProductsClientService {
         id: String(p.id_producto),
         brand: p.marca?.nombre || "",
         name: p.nombre,
+        design: p.diseno?.nombre || "",
+        width: p.ancho_rin,
+        profile: p.alto_rin,
+        rim: p.rin,
         price: parseFloat(price.toFixed(2)),
         originalPrice:
           originalPrice != null

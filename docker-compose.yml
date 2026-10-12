@@ -121,10 +121,16 @@ services:
       dockerfile: Dockerfile
       args:
         VITE_API_URL: "https://api.grupoinversan.com"
+        VITE_PUBLIC_SITE_URL: "https://grupoinversan.com"
     container_name: inversan_frontend
     restart: unless-stopped
     ports:
       - "5000:5000"
+    environment:
+      SSR_API_URL: http://backend:3000
+      PUBLIC_API_URL: https://api.grupoinversan.com
+      PUBLIC_SITE_URL: https://grupoinversan.com
+      GOOGLE_SITE_VERIFICATION: ${GOOGLE_SITE_VERIFICATION:-}
     depends_on:
       backend:
         condition: service_healthy

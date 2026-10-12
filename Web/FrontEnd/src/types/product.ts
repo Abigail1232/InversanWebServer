@@ -13,7 +13,12 @@ export interface RelatedProduct {
   id: string;
   brand: string;
   name: string;
+  design?: string;
+  width?: string | number;
+  profile?: string | number;
+  rim?: string | number;
   price: number;
+  precio_anterior?: number;
   originalPrice?: number;
   discountPercent?: number;
   promotionDisplayMode?: "porcentaje" | "precio_tachado";
@@ -27,6 +32,7 @@ export interface Product {
   brand: string;
   company: string;
   name: string;
+  design?: string;
   category: string;
   price: number;
   originalPrice?: number;

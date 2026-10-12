@@ -15,25 +15,32 @@ import { motion } from "framer-motion";
 import { API_BASE_URL } from "../../config/api";
 import { getUserToken } from "../../api/user/user";
 import { getMyAttendanceSummary, type MyAttendanceSummary } from "../../api/attendance/attendance";
+import SeoMetadata from "../../components/SeoMetadata";
 
 export default function HomePage() {
   const navigate = useNavigate();
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [attendanceSummary, setAttendanceSummary] = useState<MyAttendanceSummary | null>(null);
-  const fetchPromotions = async () => {
-    const res = await getPromotions();
-    console.log(res);
-    const now = new Date();
-    const data = res.filter(promo => {
-      return new Date(promo.fecha_finalizacion) >= now;
-    });
-    console.log(data);
-    setPromotions(data);
-  };
 
   useEffect(() => {
-    fetchPromotions();
+    let cancelled = false;
+    void getPromotions()
+      .then((result) => {
+        if (cancelled) return;
+        const now = new Date();
+        setPromotions(
+          result.filter(
+            (promotion) => new Date(promotion.fecha_finalizacion) >= now,
+          ),
+        );
+      })
+      .catch((error: unknown) => {
+        console.error("Error al cargar promociones de inicio:", error);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -83,6 +90,11 @@ export default function HomePage() {
 
   return (
     <div className="min-h-[100vh] bg-[#f9fafb] pb-8">
+      <SeoMetadata
+        title="Llantas en Honduras para Carro, SUV y Pickup | Inversan"
+        description="Encuentra llantas para carro, SUV y pickup en Inversan Honduras. Consulta medidas, marcas, precios y disponibilidad."
+        canonicalPath="/"
+      />
       {/* Announcement Panel - Full Width */}
       <section className="w-full relative overflow-hidden mb-6 md:mb-8 group">
         <div className="h-[400px] sm:h-[450px] md:h-[600px] w-full relative overflow-hidden">
@@ -135,7 +147,7 @@ export default function HomePage() {
                   transition={{ delay: 0.8 }}
                   className="inline-block px-5 py-2 bg-[#027EB1] text-white text-[10px] md:text-sm font-black rounded-full uppercase tracking-[0.3em] shadow-xl"
                 >
-                  Líderes en el Mercado
+                  Catálogo de llantas Inversan
                 </motion.div>
 
                 <div className="overflow-hidden">
@@ -149,8 +161,8 @@ export default function HomePage() {
                     }}
                     className="text-xl sm:text-2xl md:text-5xl font-black text-[#003e7b] font-['Arimo'] uppercase leading-[1.05]"
                   >
-                    Calidad que <br />{" "}
-                    <span className="text-[#027EB1]">mueve tu mundo</span>
+                    Llantas para tu vehículo <br />{" "}
+                    <span className="text-[#027EB1]">en Honduras</span>
                   </motion.h1>
                 </div>
 
@@ -160,8 +172,8 @@ export default function HomePage() {
                   transition={{ delay: 1.3, duration: 1 }}
                   className="text-gray-500 text-xs sm:text-sm md:text-lg max-w-md font-medium leading-relaxed"
                 >
-                  Encuentra las mejores llantas premium con garantía
-                  total de fábrica.
+                  Encuentra llantas para carro, SUV y pickup en Inversan
+                  Honduras. Consulta medidas, marcas, precios y disponibilidad.
                 </motion.p>
 
                 <motion.div
