@@ -3,6 +3,10 @@ const prisma = require("../../src/config/database");
 /**
  * Lista completa de privilegios del sistema.
  *
+  {
+    nombre: "ASI_BIOMETRIA_ADMINISTRAR",
+    descripcion: "Registrar, reemplazar o desactivar biometría facial de empleados.",
+  },
  * IMPORTANTE: El orden importa porque los IDs se asignan secuencialmente.
  * Si agregas nuevos privilegios, agrégalos al FINAL para no romper las relaciones existentes.
  */
@@ -120,19 +124,31 @@ const privilegios = [
   },
   {
     nombre: "ASI_ADMINISTRAR",
-    descripcion: "Permite administrar asistencia y seleccionar cualquier sucursal para registrar asistencia.",
+    descripcion: "Permite administrar asistencia dentro de las sucursales asignadas al usuario.",
   },
   {
     nombre: "ASI_REPORTES",
     descripcion: "Permite visualizar reportes de asistencia, horas faltadas y registros semanales por empleado.",
   },
+  {
+    nombre: "ASI_EDITAR",
+    descripcion: "Editar asistencia: permite modificar horas y observaciones de registros de asistencia.",
+  },
+  {
+    nombre: "ASI_BIOMETRIA_ADMINISTRAR",
+    descripcion:
+      "Registrar, reemplazar, aprobar, rechazar o desactivar biometrÃ­a facial de empleados.",
+  },
 ];
 
 async function Privilegios() {
   for (const privilegio of privilegios) {
-    await prisma.privilegio.create({
-      data: privilegio,
+    const existente = await prisma.privilegio.findFirst({
+      where: { nombre: privilegio.nombre },
     });
+    if (!existente) {
+      await prisma.privilegio.create({ data: privilegio });
+    }
   }
   console.log("Privilegios insertados");
 }

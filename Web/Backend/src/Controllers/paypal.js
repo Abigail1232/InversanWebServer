@@ -10,6 +10,10 @@ require("dotenv").config();
 async function getAccessTokenPaypal() {
   const clientId = process.env.PAYPAL_CLIENT_ID;
   const clientSecret = process.env.PAYPAL_CLIENT_SECRET;
+  if (!clientId || !clientSecret) {
+    throw new Error("Servicio de PayPal no configurado");
+  }
+
   const auth = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
 
   try {
@@ -30,6 +34,9 @@ async function getAccessTokenPaypal() {
 
 async function getExchangeRate() {
   const apiKey = process.env.EXCHANGE_RATE_API_KEY;
+  if (!apiKey) {
+    throw new Error("Servicio de tipo de cambio no configurado");
+  }
 
   try {
     const response = await axios.get(
@@ -69,9 +76,9 @@ async function getAccess(req, res) {
 }
 
 async function createOrderPaypal(req, res) {
-  const accessToken = await getAccessTokenPaypal();
-  const { monto } = req.body;
   try {
+    const accessToken = await getAccessTokenPaypal();
+    const { monto } = req.body;
     const exchangeRate = await getExchangeRate();
     const montoUsd = (Number(monto || 1) / Number(exchangeRate)).toFixed(2);
 
@@ -103,9 +110,9 @@ async function createOrderPaypal(req, res) {
 }
 
 async function captureOrderPaypal(req, res) {
-  const accessToken = await getAccessTokenPaypal();
-  const { orderId } = req.params;
   try {
+    const accessToken = await getAccessTokenPaypal();
+    const { orderId } = req.params;
     const response = await axios.post(
       `https://api-m.sandbox.paypal.com/v2/checkout/orders/${orderId}/capture`,
       {},

@@ -11,56 +11,10 @@ import {
   type AttendanceReportRow,
 } from "../../api/attendance/attendance";
 import { DataTable, type DataTableColumn } from "../../components/DataTable";
+import WeeklyAttendanceReport from "../../components/WeeklyAttendanceReport";
 
 const today = dayjs().format("YYYY-MM-DD");
 const firstDayOfMonth = dayjs().startOf("month").format("YYYY-MM-DD");
-const weekDays = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
-
-function getPenaltyLabel(categoria: string, horas: number) {
-  if (categoria === "puntual") return "Puntual";
-  if (categoria === "penalizacion_1h") return "1 hora faltada";
-  if (categoria === "penalizacion_2h") return "2 horas faltadas";
-  if (categoria === "falta_jornada") return "8 horas faltadas";
-  if (horas > 0) return `${horas} horas faltadas`;
-  return "Sin registro";
-}
-
-function getPenaltyColor(categoria: string) {
-  if (categoria === "puntual") return "green";
-  if (categoria === "penalizacion_1h") return "gold";
-  if (categoria === "penalizacion_2h") return "orange";
-  if (categoria === "falta_jornada") return "red";
-  return "default";
-}
-
-function startOfWeekMonday(fecha: string) {
-  const date = dayjs(fecha);
-  const diff = (date.day() + 6) % 7;
-  return date.subtract(diff, "day").format("YYYY-MM-DD");
-}
-
-type WeekGroup = {
-  weekStart: string;
-  days: Array<{
-    label: string;
-    date: string;
-    record?: AttendanceRecord;
-  }>;
-};
-
-function buildWeekGroups(records: AttendanceRecord[]): WeekGroup[] {
-  const byDate = new Map(records.map((record) => [record.fecha, record]));
-  const starts = Array.from(new Set(records.map((record) => startOfWeekMonday(record.fecha)))).sort();
-
-  return starts.map((weekStart) => ({
-    weekStart,
-    days: weekDays.map((label, index) => {
-      const date = dayjs(weekStart).add(index, "day").format("YYYY-MM-DD");
-      return { label, date, record: byDate.get(date) };
-    }),
-  }));
-}
-
 export default function AttendanceReports() {
   const [msg, contextHolder] = message.useMessage();
   const [context, setContext] = useState<AttendanceContext | null>(null);
@@ -87,7 +41,7 @@ export default function AttendanceReports() {
     [context],
   );
 
-  const weekGroups = useMemo(() => buildWeekGroups(records), [records]);
+  const canEdit = Boolean(context?.canEditarAsistencia);
 
   const loadReports = async (selectedBranchId = branchId) => {
     if (!selectedBranchId) return;
@@ -211,23 +165,23 @@ export default function AttendanceReports() {
       ),
     },
     {
-      title: "7:31 a 7:40",
-      key: "rango_7_31_7_40",
-      dataIndex: "rango_7_31_7_40",
+      title: "7:31 a 7:39",
+      key: "rango_7_31_7_39",
+      dataIndex: "rango_7_31_7_39",
       width: 140,
       render: (value) => <Tag color="gold">{Number(value || 0)}</Tag>,
     },
     {
-      title: "7:41 a 7:50",
-      key: "rango_7_41_7_50",
-      dataIndex: "rango_7_41_7_50",
+      title: "7:40 a 7:49",
+      key: "rango_7_40_7_49",
+      dataIndex: "rango_7_40_7_49",
       width: 140,
       render: (value) => <Tag color="orange">{Number(value || 0)}</Tag>,
     },
     {
-      title: "Después de 7:50",
-      key: "despues_7_50",
-      dataIndex: "despues_7_50",
+      title: "7:50 en adelante",
+      key: "desde_7_50",
+      dataIndex: "desde_7_50",
       width: 160,
       render: (value) => <Tag color="red">{Number(value || 0)}</Tag>,
     },
@@ -313,60 +267,18 @@ export default function AttendanceReports() {
           setRecords([]);
         }}
         footer={null}
-        width={1100}
+        width="min(1100px, calc(100vw - 24px))"
       >
         {recordsLoading ? (
           <div className="py-10 text-center text-slate-500">Cargando registros...</div>
-        ) : weekGroups.length === 0 ? (
-          <div className="py-10 text-center text-slate-500">Este empleado no tiene registros en el rango seleccionado.</div>
         ) : (
-          <div className="space-y-6">
-            {weekGroups.map((week) => (
-              <div key={week.weekStart} className="overflow-hidden rounded-2xl border border-[#D7E3F0]">
-                <div className="bg-[#EAF7FD] px-4 py-3 font-semibold text-[#003E7B]">
-                  Semana del {dayjs(week.weekStart).format("DD/MM/YYYY")}
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[900px] border-collapse">
-                    <thead>
-                      <tr className="bg-[#0B4E87] text-white">
-                        {week.days.map((day) => (
-                          <th key={day.date} className="px-3 py-3 text-center text-xs uppercase tracking-wide">
-                            <div>{day.label}</div>
-                            <div className="font-normal opacity-90">{dayjs(day.date).format("DD/MM")}</div>
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        {week.days.map((day) => (
-                          <td key={day.date} className="border border-[#E5EDF6] bg-white px-3 py-4 text-center align-top">
-                            {day.record ? (
-                              <div className="space-y-2">
-                                <Tag color={getPenaltyColor(day.record.categoria)}>
-                                  {getPenaltyLabel(day.record.categoria, day.record.horas_faltadas)}
-                                </Tag>
-                                <div className="text-lg font-bold text-[#003E7B]">{day.record.hora_entrada}</div>
-                                <div className="text-xs text-slate-500">Horas faltadas: {day.record.horas_faltadas}</div>
-                                <Button size="small" onClick={() => handleOpenEdit(day.record as AttendanceRecord)}>
-                                  Editar
-                                </Button>
-                              </div>
-                            ) : (
-                              <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-5 text-xs text-slate-400">
-                                Sin registro
-                              </div>
-                            )}
-                          </td>
-                        ))}
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            ))}
-          </div>
+          <WeeklyAttendanceReport
+            records={records}
+            startDate={fechaInicio}
+            endDate={fechaFin}
+            canEdit={canEdit}
+            onEdit={handleOpenEdit}
+          />
         )}
       </Modal>
 

@@ -20,6 +20,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate, useLocation } from "react-router-dom";
 import { PayPalScriptProvider } from "@paypal/react-paypal-js";
+import { API_BASE_URL } from "../../../config/api";
 
 // Imports de componentes
 import CheckoutProgress from "./CheckoutProgress";
@@ -673,7 +674,7 @@ export default function CheckoutPage() {
                             style={{ display: "flex", gap: 12, marginBottom: 16 }}
                           >
                             <img
-                              src={`${import.meta.env.VITE_API_URL}/public/${item.img
+                              src={`${API_BASE_URL}/public/${item.img
                                 }`}
                               alt={item.name}
                               style={{

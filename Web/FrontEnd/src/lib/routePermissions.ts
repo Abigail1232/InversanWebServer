@@ -10,6 +10,7 @@ export type Permission =
   | "admin.roles"
   | "admin.usuarios"
   | "admin.permisos"
+  | "admin.biometria"
   | "admin.sucursales"
   | "admin.categorias"
   | "inventario.ingreso"
@@ -17,6 +18,7 @@ export type Permission =
   | "asistencia.marcar"
   | "asistencia.administrar"
   | "asistencia.reportes"
+  | "asistencia.editar"
   | "reportes.view"
   | "reportes.ventas"
   | "reportes.visitas"
@@ -53,13 +55,16 @@ export function mapPrivilegesToPermissions(privs: Privilegio[]): Permission[] {
         perm.push("inventario.historial");
         break;
       case "ASI_MARCAR":
-        perm.push("asistencia.marcar");
+        perm.push("asistencia.marcar", "asistencia.reportes");
         break;
       case "ASI_ADMINISTRAR":
-        perm.push("asistencia.administrar", "asistencia.marcar");
+        perm.push("asistencia.administrar", "asistencia.marcar", "asistencia.reportes");
         break;
       case "ASI_REPORTES":
         perm.push("asistencia.reportes");
+        break;
+      case "ASI_EDITAR":
+        perm.push("asistencia.editar");
         break;
       case "ADM_USUARIOS":
         perm.push("admin.usuarios");
@@ -73,6 +78,9 @@ export function mapPrivilegesToPermissions(privs: Privilegio[]): Permission[] {
         break;
       case "ADM_PERMISOS":
         perm.push("admin.permisos");
+        break;
+      case "ASI_BIOMETRIA_ADMINISTRAR":
+        perm.push("admin.biometria");
         break;
       case "REP_VENTAS":
         perm.push("reportes.ventas", "reportes.view");
@@ -112,6 +120,7 @@ export function mapPrivilegesToPermissions(privs: Privilegio[]): Permission[] {
           "admin.roles",
           "admin.usuarios",
           "admin.permisos",
+          "admin.biometria",
           "admin.sucursales",
           "admin.categorias",
           "inventario.ingreso",
@@ -119,6 +128,7 @@ export function mapPrivilegesToPermissions(privs: Privilegio[]): Permission[] {
           "asistencia.marcar",
           "asistencia.administrar",
           "asistencia.reportes",
+          "asistencia.editar",
           "reportes.view",
           "reportes.ventas",
           "reportes.visitas",
@@ -146,6 +156,7 @@ const STAFF_PERMISSIONS: Permission[] = [
   "admin.roles",
   "admin.usuarios",
   "admin.permisos",
+  "admin.biometria",
   "admin.sucursales",
   "admin.categorias",
   "inventario.ingreso",
@@ -185,6 +196,7 @@ export function getRequiredPermissionForAdminPath(pathname: string): Permission[
   // Usuarios y permisos
   if (path === "/admin/users") return ["admin.usuarios"];
   if (path === "/admin/permissions") return ["admin.permisos"];
+  if (path === "/admin/biometria") return ["admin.biometria"];
   if (path === "/admin/roles") return ["admin.roles"];
 
   // Sucursales y bodegas

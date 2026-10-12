@@ -11,6 +11,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { message, Spin, ConfigProvider } from "antd";
 import { ImageWithFallback } from "../../components/ImageWithFallback";
+import { buildAssetUrl } from "../../config/api";
 import DesignProductsView from "./DesignProductsView";
 import { getMarcas } from "../../api/products/marcas";
 import {
@@ -58,20 +59,6 @@ interface DesignFormPayload {
   imagenPreview: string;
   activo: boolean;
 }
-
-const API_BASE =
-  (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, "") ||
-  "http://localhost:3000";
-
-const buildAssetUrl = (value?: string | null) => {
-  if (!value) return "";
-
-  if (value.startsWith("http://") || value.startsWith("https://")) {
-    return value;
-  }
-
-  return `${API_BASE}/assets/${encodeURIComponent(value)}`;
-};
 
 const mapApiDesignToView = (diseno: ApiDiseno): Design => {
   return {

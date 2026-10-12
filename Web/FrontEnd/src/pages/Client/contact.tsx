@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { MapPin, Send, Phone, Clock, ChevronDown, Mail } from 'lucide-react';
 import { Select, Card, Typography } from 'antd';
 import { CheckCircleOutlined } from '@ant-design/icons';
+import { API_BASE_URL } from '../../config/api';
 
 type Departamento = {
   nombre_departamento: string;
@@ -62,7 +63,7 @@ function safeJoin(parts: Array<string | undefined | null>, sep = ', ') {
 }
 
 export default function ContactPage() {
-  const API_BASE = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+  const API_BASE = API_BASE_URL;
 
   const [branches, setBranches] = useState<Sucursal[]>([]);
   const [loading, setLoading] = useState(true);

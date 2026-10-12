@@ -5,8 +5,12 @@ require("dotenv").config();
 // pero internamente usa la API HTTP de Brevo (NUNCA será bloqueado por Railway).
 const transporter = {
   sendMail: async ({ from, to, subject, html, text }) => {
-    // Si no pones BREVO_SENDER_EMAIL en .env, tomará el haroldhdiaz por defecto
-    const senderEmail = process.env.BREVO_SENDER_EMAIL || process.env.EMAIL_USER || "haroldhdiaz@gmail.com";
+    const apiKey = process.env.BREVO_API_KEY;
+    const senderEmail = process.env.BREVO_SENDER_EMAIL || process.env.EMAIL_USER;
+    if (!apiKey || !senderEmail) {
+      throw new Error("Servicio de correo no configurado");
+    }
+
     const senderName = process.env.BREVO_SENDER_NAME || "INVERSAN";
 
     // Aseguramos que 'to' sea siempre un arreglo y le damos formato a Brevo
@@ -26,7 +30,7 @@ const transporter = {
     try {
       const response = await axios.post("https://api.brevo.com/v3/smtp/email", data, {
         headers: {
-          "api-key": process.env.BREVO_API_KEY,
+          "api-key": apiKey,
           "Content-Type": "application/json",
           "Accept": "application/json"
         }

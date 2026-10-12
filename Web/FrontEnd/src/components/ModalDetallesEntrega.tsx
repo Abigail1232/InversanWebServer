@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { DataTable, type DataTableColumn } from "./DataTable";
+import { API_BASE_URL } from "../config/api";
 
 export interface DetalleItem {
   inv: string;
@@ -117,7 +118,7 @@ export function ModalDetallesEntrega({
         render: (_, record) =>
           record.imagen ? (
             <img
-              src={`${import.meta.env.VITE_API_URL}/public/${record.imagen}`}
+              src={`${API_BASE_URL}/public/${record.imagen}`}
               alt={record.producto}
               className="w-12 h-12 rounded-lg object-cover bg-[#f3f4f6]"
             />
@@ -348,7 +349,7 @@ export function ModalDetallesEntrega({
               >
                 {item.imagen ? (
                   <img
-                    src={`${import.meta.env.VITE_API_URL}/public/${item.imagen}`}
+                      src={`${API_BASE_URL}/public/${item.imagen}`}
                     alt={item.producto}
                     className="w-20 h-20 rounded-lg object-cover shrink-0 bg-[#f3f4f6]"
                   />

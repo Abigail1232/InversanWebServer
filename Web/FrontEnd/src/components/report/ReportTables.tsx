@@ -8,6 +8,7 @@ import api from '../../api/axios';
 import { DatePicker, ConfigProvider } from 'antd';
 import esES from 'antd/lib/locale/es_ES';
 import dayjs from 'dayjs';
+import { API_BASE_URL } from '../../config/api';
 
 // --- CONFIGURACIÓN CENTRALIZADA ---
 export const SPEC_CONFIGS = [
@@ -457,7 +458,7 @@ export const SinVistasTable = forwardRef(({
                       <div className="flex items-center py-1 gap-2">
                         <div className="flex-shrink-0 w-10 h-10 overflow-hidden bg-gray-100 border border-gray-200 rounded">
                           {p.imagen_url ? (
-                            <img src={`${import.meta.env.VITE_API_URL}/public/${p.imagen_url}`} className="object-cover w-full h-full" alt={p.nombre} />
+                            <img src={`${API_BASE_URL}/public/${p.imagen_url}`} className="object-cover w-full h-full" alt={p.nombre} />
                           ) : (
                             <div className="flex items-center justify-center w-full h-full text-gray-400"><Layers className="w-4 h-4" /></div>
                           )}
@@ -499,7 +500,7 @@ export const SinVistasTable = forwardRef(({
                   <div className="flex items-center gap-3 w-full">
                     <div className="overflow-hidden bg-gray-100 border border-gray-200 rounded-lg shrink-0 w-12 h-12">
                       {p.imagen_url ? (
-                        <img src={`${import.meta.env.VITE_API_URL}/public/${p.imagen_url}`} className="object-cover w-full h-full" alt={p.nombre} />
+                        <img src={`${API_BASE_URL}/public/${p.imagen_url}`} className="object-cover w-full h-full" alt={p.nombre} />
                       ) : (
                         <div className="flex items-center justify-center w-full h-full text-gray-400"><Layers className="w-5 h-5" /></div>
                       )}
@@ -706,7 +707,7 @@ export const OportunidadesTable = forwardRef(({
                       <div className="flex items-center py-1 gap-2">
                         <div className="flex-shrink-0 w-10 h-10 overflow-hidden bg-gray-100 border border-gray-200 rounded">
                           {p.imagen_url ? (
-                            <img src={`${import.meta.env.VITE_API_URL}/public/${p.imagen_url}`} className="object-cover w-full h-full" alt={p.nombre} />
+                            <img src={`${API_BASE_URL}/public/${p.imagen_url}`} className="object-cover w-full h-full" alt={p.nombre} />
                           ) : (
                             <div className="flex items-center justify-center w-full h-full text-gray-400"><Layers className="w-4 h-4" /></div>
                           )}
@@ -750,7 +751,7 @@ export const OportunidadesTable = forwardRef(({
                   <div className="flex items-center gap-3 w-full">
                     <div className="overflow-hidden bg-gray-100 border border-gray-200 rounded-lg shrink-0 w-12 h-12">
                       {p.imagen_url ? (
-                        <img src={`${import.meta.env.VITE_API_URL}/public/${p.imagen_url}`} className="object-cover w-full h-full" alt={p.nombre} />
+                        <img src={`${API_BASE_URL}/public/${p.imagen_url}`} className="object-cover w-full h-full" alt={p.nombre} />
                       ) : (
                         <div className="flex items-center justify-center w-full h-full text-gray-400"><Layers className="w-5 h-5" /></div>
                       )}
@@ -945,7 +946,7 @@ export const TopProductosTable = forwardRef(({ initialData, baseParams, rangeTex
                       <div className="flex items-center gap-3">
                         <div className="flex-shrink-0 w-12 h-12 overflow-hidden bg-gray-100 border border-gray-200 rounded-lg">
                           {p.imagen_url ? (
-                            <img src={`${import.meta.env.VITE_API_URL}/public/${p.imagen_url}`} className="object-cover w-full h-full" alt={p.nombre} />
+                            <img src={`${API_BASE_URL}/public/${p.imagen_url}`} className="object-cover w-full h-full" alt={p.nombre} />
                           ) : (
                             <div className="flex items-center justify-center w-full h-full text-gray-400"><Layers className="w-6 h-6" /></div>
                           )}
@@ -989,7 +990,7 @@ export const TopProductosTable = forwardRef(({ initialData, baseParams, rangeTex
                   <div className="flex items-center gap-3 w-full">
                     <div className="overflow-hidden bg-gray-100 border border-gray-200 rounded-lg shrink-0 w-12 h-12">
                       {p.imagen_url ? (
-                        <img src={`${import.meta.env.VITE_API_URL}/public/${p.imagen_url}`} className="object-cover w-full h-full" alt={p.nombre} />
+                        <img src={`${API_BASE_URL}/public/${p.imagen_url}`} className="object-cover w-full h-full" alt={p.nombre} />
                       ) : (
                         <div className="flex items-center justify-center w-full h-full text-gray-400"><Layers className="w-5 h-5" /></div>
                       )}

@@ -50,7 +50,7 @@ async function insertRolPrivilegio() {
     },
     {
       rol: "Marcar asistencia",
-      privs: ["DASHBOARD_VIEW", "ASI_MARCAR"],
+      privs: ["DASHBOARD_VIEW", "ASI_MARCAR", "ASI_REPORTES"],
     },
     {
       rol: "User",

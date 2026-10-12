@@ -24,7 +24,7 @@ const LoadingScreen = ({
       <Spin
         size={size}
         className="!text-[#027EB1]"
-        tip={tip}
+        description={tip}
       />
       <p className="text-center text-sm text-[#027EB1] max-w-xs">
         {description}

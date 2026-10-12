@@ -8,6 +8,7 @@ import {
   type ProductoPorMarca,
 } from "../../api/products/marcas";
 import { Switch } from "antd";
+import { buildAssetUrl } from "../../config/api";
 
 interface Product {
   id: number;
@@ -43,18 +44,6 @@ export default function BrandProductsView({
   const [modelFilter, setModelFilter] = useState("Todos los Modelos");
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 5;
-
-  const API_BASE =
-    (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, "") ||
-    "http://localhost:3000";
-
-  const buildAssetUrl = (value?: string | null) => {
-    if (!value) return "";
-    if (value.startsWith("http://") || value.startsWith("https://")) {
-      return value;
-    }
-    return `${API_BASE}/assets/${encodeURIComponent(value)}`;
-  };
 
   useEffect(() => {
     const loadProducts = async () => {

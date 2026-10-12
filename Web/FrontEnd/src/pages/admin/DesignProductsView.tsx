@@ -5,6 +5,7 @@ import { ImageWithFallback } from "../../components/ImageWithFallback";
 import { DataTable, type DataTableColumn } from "../../components/DataTable";
 import { FilterBar } from "../../components/FilterBar";
 import type { Design, DesignProduct } from "./DesignManagement";
+import { buildAssetUrl } from "../../config/api";
 import {
   getProductosPorDiseno,
   type ProductoPorDiseno,
@@ -14,20 +15,6 @@ interface DesignProductsViewProps {
   design: Design;
   onBack: () => void;
 }
-
-const API_BASE =
-  (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, "") ||
-  "http://localhost:3000";
-
-const buildAssetUrl = (value?: string | null) => {
-  if (!value) return "";
-
-  if (value.startsWith("http://") || value.startsWith("https://")) {
-    return value;
-  }
-
-  return `${API_BASE}/assets/${encodeURIComponent(value)}`;
-};
 
 const mapProductToView = (product: ProductoPorDiseno): DesignProduct => {
   return {

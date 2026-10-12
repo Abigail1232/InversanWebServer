@@ -26,6 +26,7 @@ import {
   MenuUnfoldOutlined,
   LeftOutlined,
   RightOutlined,
+  ScheduleOutlined,
 } from "@ant-design/icons";
 import { getPrivilegesUser, type Privilegio } from "../api/auth/privileges";
 import { getUserToken, type Usuario, GUEST_USER } from "../api/user/user";
@@ -463,19 +464,29 @@ const ShoppingHeader = forwardRef<ShoppingHeaderHandle, ShoppingHeaderProps>(
 
     useEffect(() => {
       const pathname = location.pathname;
-      setSubMenuItems(
-        SubMenuData.filter((item) => {
+      const items = SubMenuData.filter((item) => {
           // Si el item requiere autenticación y el usuario no está logueado, ocultarlo
           if (item.requiresAuth && !currentUser.id_usuario) {
             return false;
           }
           return true;
-        }).map((item) => ({
+        });
+
+      if (currentUser.empleado_sucursal?.length) {
+        items.push({
+          icon: <ScheduleOutlined />,
+          text: "Mi asistencia",
+          path: "/mi-asistencia",
+          select: false,
+          requiresAuth: true,
+        });
+      }
+
+      setSubMenuItems(items.map((item) => ({
           ...item,
           select: item.path === pathname,
-        })),
-      );
-    }, [location.pathname, currentUser.id_usuario]);
+        })));
+    }, [location.pathname, currentUser.id_usuario, currentUser.empleado_sucursal]);
 
     useEffect(() => {
       if (showCartButton) {

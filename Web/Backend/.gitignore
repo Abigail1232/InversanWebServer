@@ -1,21 +1,20 @@
 node_modules/
-dist
-# Keep environment variables out of version control
+dist/
 .env
+.env.*
+!.env.example
 /generated/prisma
+assets/tmp/
+assets/[0-9]*-*.jpg
+assets/[0-9]*-*.jpeg
+assets/[0-9]*-*.png
+assets/[0-9]*-*.gif
+assets/[0-9]*-*.webp
 
-
-# Es mejor no subir imágenes reales al repo, solo el código
-Backend/assets/*
-!Backend/assets/.gitkeep
-
-# Archivos temporales del sistema operativo
+**/.DS_Store
 .DS_Store
 Thumbs.db
 ehthumbs.db
-
-# Archivos de logs y temporales de Node
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-.tmp/

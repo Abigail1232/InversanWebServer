@@ -33,6 +33,7 @@ import ShoppingHeader from "../../components/Header";
 import Footer from "../../components/footer";
 import { getAllActiveBranches } from "../../api/branches/branches";
 import type { Sucursal } from "../../types/branch";
+import { API_BASE_URL } from "../../config/api";
 
 const LOCAL_STORAGE_KEY = "selectedBranch";
 
@@ -478,7 +479,7 @@ export default function GuestOrderView() {
                     {/* Product image */}
                     {product.imagen ? (
                       <img
-                        src={`${import.meta.env.VITE_API_URL}${product.imagen}`}
+                        src={`${API_BASE_URL}${product.imagen}`}
                         alt={product.nombre}
                         width={64}
                         height={64}

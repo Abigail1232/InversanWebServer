@@ -1,6 +1,7 @@
 import type { RelatedProduct } from "../../types/product";
 import { FaBoxOpen } from "react-icons/fa";
 import DiscountBadge from "../ui/DiscountBadge";
+import { API_BASE_URL } from "../../config/api";
 
 interface Props {
   product: RelatedProduct;
@@ -52,7 +53,7 @@ export default function RelatedProductCard({
       <div className="bg-[#f9fafb] rounded-[10px] m-3 overflow-hidden aspect-[4/3] w-auto flex-shrink-0 flex items-center justify-center">
         {product.imageUrl ? (
           <img
-            src={`${import.meta.env.VITE_API_URL}/public/${product.imageUrl}`}
+            src={`${API_BASE_URL}/public/${product.imageUrl}`}
             alt={product.name}
             className="w-full h-full object-contain"
           />

@@ -5,6 +5,7 @@ import { X, Hash, ShoppingBag, MessageSquare } from "lucide-react";
 import dayjs from "dayjs";
 import type { IngresoProducto } from "../../pages/inventory/history";
 import { getEntryDetail } from "../../api/admin/entries";
+import { API_BASE_URL } from "../../config/api";
 
 const { Title, Text } = Typography;
 
@@ -153,7 +154,7 @@ const DetailModal = ({ entry, isOpen, onClose }: Props) => {
                     detail.detalles.map((item) => {
                       const total = Number(item.total);
                       const imageSrc = item.foto
-                        ? `${import.meta.env.VITE_API_URL}/public/${item.foto}`
+                        ? `${API_BASE_URL}/public/${item.foto}`
                         : "/no-image.png";
 
                       return (

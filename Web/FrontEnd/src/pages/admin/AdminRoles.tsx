@@ -677,7 +677,7 @@ function RolFormModal({
                       <Checkbox checked={checked} className="shrink-0" />
                       <div className="min-w-0">
                         <div className="text-sm font-medium text-gray-800 truncate">
-                          {priv.nombre}
+                          {priv.nombre === "ASI_EDITAR" ? "Editar asistencia" : priv.nombre}
                         </div>
                         {priv.descripcion && (
                           <div className="text-xs text-gray-500 mt-0.5 line-clamp-2">

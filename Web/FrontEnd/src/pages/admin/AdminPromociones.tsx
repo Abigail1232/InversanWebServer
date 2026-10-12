@@ -24,6 +24,7 @@ import dayjs, { Dayjs } from "dayjs";
 import { DataTable, type DataTableColumn } from "../../components/DataTable";
 import { useNavigate } from "react-router-dom";
 import { FilterX, Pencil } from "lucide-react";
+import { API_BASE_URL } from "../../config/api";
 
 import {
   getPromociones,
@@ -587,7 +588,7 @@ export default function AdminPromociones() {
                   <p className="text-xs text-gray-500 mb-2">Banner actual:</p>
                   <div className="w-full h-32 rounded-lg overflow-hidden border border-gray-200">
                     <img
-                      src={`http://localhost:3000/assets/${promoDetalle.banner_url}`}
+                      src={`${API_BASE_URL}/assets/${promoDetalle.banner_url}`}
                       className="w-full h-full object-cover"
                       alt="Banner actual"
                       onError={(e) => {
@@ -672,7 +673,7 @@ export default function AdminPromociones() {
                 <img
                   src={
                     promoDetalle.banner_url
-                      ? `http://localhost:3000/assets/${promoDetalle.banner_url}`
+                      ? `${API_BASE_URL}/assets/${promoDetalle.banner_url}`
                       : "/placeholder-banner.png"
                   }
                   className="w-full h-full object-cover"
@@ -710,11 +711,6 @@ export default function AdminPromociones() {
                         ? Math.round((precioOriginal * (1 - descuento / 100)) * 100) / 100
                         : precioOriginal;
                     const mostrarPrecioTachado = descuento > 0 || (esMonto && precioOriginal > precioPromocion);
-                    const baseUrl =
-                      (
-                        import.meta.env.VITE_API_URL as string | undefined
-                      )?.replace(/\/+$/, "") ?? "";
-
                     return (
                       <div
                         key={producto.id_producto}
@@ -723,7 +719,7 @@ export default function AdminPromociones() {
                         <div className="aspect-square rounded-xl overflow-hidden mb-3">
                           {imagen ? (
                             <img
-                              src={`${baseUrl}/assets/${imagen.imagen_url}`}
+                              src={`${API_BASE_URL}/assets/${imagen.imagen_url}`}
                               className="w-full h-full object-cover"
                               alt={producto.nombre}
                               onError={(e) => {

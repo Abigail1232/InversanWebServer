@@ -5,6 +5,7 @@ import { Typography, Pagination } from 'antd';
 import RelatedProductCard from '../../components/product/RelatedProductCard';
 import type { RelatedProduct } from '../../types/product';
 import { getProductsByBrand, PAGE_SIZE } from '../../api/products/brands';
+import { API_BASE_URL } from '../../config/api';
 
 export default function MarcaProductosPage() {
     const navigate = useNavigate();
@@ -88,7 +89,7 @@ export default function MarcaProductosPage() {
                 <div className="relative w-full rounded-2xl overflow-hidden shadow-sm min-h-[150px] md:min-h-[250px] bg-gray-100">
                     {bannerUrl ? (
                         <img
-                            src={`${import.meta.env.VITE_API_URL || ''}/public/${bannerUrl}`}
+                            src={`${API_BASE_URL}/public/${bannerUrl}`}
                             alt={`Banner ${brandName}`}
                             className="w-full h-full min-h-[150px] md:min-h-[250px] object-cover object-center"
                         />

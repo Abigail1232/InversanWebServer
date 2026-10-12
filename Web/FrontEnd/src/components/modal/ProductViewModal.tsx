@@ -1,6 +1,7 @@
 import { useState, useEffect, createElement } from "react";
 import { createPortal } from "react-dom";
 import { X, ChevronLeft, ChevronRight, Info } from "lucide-react";
+import { API_BASE_URL, normalizeApiAssetUrl } from "../../config/api";
 
 interface ProductViewModalProps {
   isOpen: boolean;
@@ -18,7 +19,7 @@ export default function ProductViewModal({
   const [modelViewerReady, setModelViewerReady] = useState(false);
   const [model3DExists, setModel3DExists] = useState(false);
 
-  const apiBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:3000";
+  const apiBaseUrl = API_BASE_URL;
   const model3DUrl = product?.modelo3D?.url || null;
 
   const getProductImages = (marca: string) => {
@@ -100,9 +101,7 @@ export default function ProductViewModal({
       }
 
       try {
-        const fullUrl = model3DUrl.startsWith("http")
-          ? model3DUrl
-          : `${apiBaseUrl}/public/${model3DUrl.replace(/^\/+/, "")}`;
+        const fullUrl = normalizeApiAssetUrl(model3DUrl, "public");
 
         const response = await fetch(fullUrl, { method: "HEAD" });
         setModel3DExists(response.ok);
@@ -128,12 +127,7 @@ export default function ProductViewModal({
 
   const images =
     product.imagenes && product.imagenes.length > 0
-      ? product.imagenes.map((img: any) => {
-          const urlStr = img.url || "";
-          if (urlStr.startsWith("http")) return urlStr;
-          const cleanUrl = urlStr.replace(/^\/+/, "").replace(/^public\//, "");
-          return `${apiBaseUrl}/public/${cleanUrl}`;
-        })
+      ? product.imagenes.map((img: any) => normalizeApiAssetUrl(img.url, "public"))
       : getProductImages(product.marca || "");
 
   const handlePrevImage = () => {
@@ -383,7 +377,7 @@ export default function ProductViewModal({
                     modelViewerReady ? (
                       createElement("model-viewer", {
                         src: model3DUrl.startsWith("http")
-                          ? model3DUrl
+                          ? normalizeApiAssetUrl(model3DUrl)
                           : `${apiBaseUrl}/public/${model3DUrl.replace(/^\/+/, "")}`,
                         alt: "Modelo 3D del producto",
                         "camera-controls": true,

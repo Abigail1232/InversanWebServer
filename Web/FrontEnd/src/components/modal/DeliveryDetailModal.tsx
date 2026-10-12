@@ -12,6 +12,7 @@ import {
 import { Badge } from "../ui/badge";
 import { cn } from "../ui/utils";
 import type { DeliveryDetail } from "../../api/deliveries/delivery-history";
+import { API_BASE_URL } from "../../config/api";
 
 const { Text, Title } = Typography;
 
@@ -137,7 +138,7 @@ export default function DeliveryDetailModal({
               <div className="flex-shrink-0">
                 {item.imagen ? (
                   <img
-                    src={`${import.meta.env.VITE_API_URL}/public/${item.imagen}`}
+                    src={`${API_BASE_URL}/public/${item.imagen}`}
                     alt={item.nombre_producto}
                     className="w-14 h-14 rounded-lg object-cover bg-gray-100"
                   />
@@ -316,7 +317,7 @@ export default function DeliveryDetailModal({
                   <TableCell className="px-4 py-3">
                     {item.imagen ? (
                       <img
-                        src={`${import.meta.env.VITE_API_URL}/public/${item.imagen}`}
+                        src={`${API_BASE_URL}/public/${item.imagen}`}
                         alt={item.nombre_producto}
                         className="w-10 h-10 rounded-lg object-cover bg-gray-100"
                       />
